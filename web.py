@@ -36,7 +36,7 @@ def character():
     race = request.args.get("raceField", "")
     
     if request.args.get("sheetCheck"):
-        return f"<head><title>Stat List</title><link rel=\"stylesheet\" href=\"../static/skeleton.css\" /></head><body><div class=\"statsheet\"><h1>Player Stats</h1><h2>Name</h2><p name=\"nameOut\" class=\"inputRes\">{name}</p><h2>Player</h2><p name=\"pNameOut\" class=\"inputRes\">{pName}</p><h2>Class</h2><p name=\"classOut\" class=\"inputRes\">{cClass}</p><h2>Level</h2><p name=\"lvlOut\" class=\"inputRes\">{level}</p><h2>Alignment</h2><p name=\"alignOut\" class=\"inputRes\">{alignment}</p><h2>Race</h2><p name=\"raceOut\" class=\"inputRes\">{race}</p></div></body>", 100
+        return f"<head><title>Stat List</title><link rel=\"stylesheet\" href=\"../static/skeleton.css\" /></head><body><div class=\"statsheet\"><h1>Player Stats</h1><h2>Name</h2><p name=\"nameOut\" class=\"inputRes\">{name}</p><h2>Player</h2><p name=\"pNameOut\" class=\"inputRes\">{pName}</p><h2>Class</h2><p name=\"classOut\" class=\"inputRes\">{cClass}</p><h2>Level</h2><p name=\"lvlOut\" class=\"inputRes\">{level}</p><h2>Alignment</h2><p name=\"alignOut\" class=\"inputRes\">{alignment}</p><h2>Race</h2><p name=\"raceOut\" class=\"inputRes\">{race}</p></div></body>", 200
 
     return jsonify({
         "name": name,
