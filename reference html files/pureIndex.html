@@ -1,0 +1,65 @@
+<!--This file is the master HTML file that I've been compressing into a single string for Flask printing-->
+<!DOCTYPE html>
+
+<head>
+    <title>DND Stat Holder</title>
+    <link rel="stylesheet" href="../static/skeleton.css" />
+</head>
+
+
+<body>
+    <div class="statsheet">
+        <h1>Player Stats</h1>
+        <h2>Name</h2>
+        <p name="nameOut" class="inputRes">test</p>
+
+        <h2>Player</h2>
+        <p name="pNameOut" class="inputRes"></p>
+        
+        <h2>Class</h2>
+        <p name="classOut" class="inputRes"></p>
+
+        <h2>Level</h2>
+        <p name="lvlOut" class="inputRes"></p>
+
+        <h2>Alignment</h2>
+        <p name="alignOut" class="inputRes"></p>
+
+        <h2>Race</h2>
+        <p name="raceOut" class="inputRes"></p>
+    </div>
+
+    <center>
+    <form action="/send_stats" method="POST">
+        <label>Name: </label>
+        <input name="nameField">
+        <br />
+        
+        <label>Player: </label>
+        <input name="pNameField">
+        <br />
+        
+        
+        <label>Class: </label>
+        <input name="classField">
+        <br />
+        
+        <label>Level: </label>
+        <input name="lvlField">
+        <br />
+        
+        <label>Alignment: </label>
+        <input name="alignField">
+        <br />
+        
+        <label>Race: </label>
+        <input name="raceField">
+        <br />
+        
+        <button>Enter</button>
+        <br />
+
+    </form>
+    </center>
+
+</body>

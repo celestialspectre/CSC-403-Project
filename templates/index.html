@@ -1,0 +1,43 @@
+<!--The starting html file, or home page-->
+<!DOCTYPE html>
+
+<head>
+    <title>DND Stat Input</title> <!--name of the tab-->
+    <link rel="stylesheet" href="../static/skeleton.css" /> <!--connects the stylesheet (css) to the page-->
+</head>
+
+
+<body> 
+    <center>
+    <form action="/send_stats" method="POST"> <!--responsible for the text boxes. it's sort of like a category. the action="send_stats" makes it compatible with @app.route("/send_stats", methods=["POST"] portion in web.py)-->
+        <label>Name: </label> <!--label for text box-->
+        <input name="nameField"> <!--actual text box-->
+        <br /> <!--a line breal to separate elements better-->
+        
+        <label>Player: </label>
+        <input name="pNameField">
+        <br />
+        
+        
+        <label>Class: </label>
+        <input name="classField">
+        <br />
+        
+        <label>Level: </label>
+        <input name="lvlField">
+        <br />
+        
+        <label>Alignment: </label>
+        <input name="alignField">
+        <br />
+        
+        <label>Race: </label>
+        <input name="raceField">
+        <br />
+
+        <button>Submit</button> <!--submit button-->
+        <br />
+    </form>
+    </center>
+
+</body>

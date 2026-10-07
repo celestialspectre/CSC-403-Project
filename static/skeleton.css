@@ -1,0 +1,61 @@
+/*The code that controls all of the visual flair of the html pages that link to it. most*/
+
+body {
+    background-color: rgb(125, 50, 0);
+}
+
+h1, h2, h3, form label{
+    color: white; /*color refers to text color*/
+    text-align: center;
+}
+
+form label{
+    font-size:larger;
+}
+
+p {
+    color:gray;
+}
+
+.statsheet{
+    background-color: rgb(225,225,50);
+    justify-self: center;
+    text-align: center;
+    width: 40%;
+    height:auto;
+    border-radius: 24px;
+    padding: 2%;
+    margin-bottom: 5%;
+
+}
+
+.statsheet:hover{ /*special visuals when the mouse hovers over the sheet*/
+    background-color: rgb(234, 234, 60);
+}
+
+div h1{
+    color: black;
+    text-decoration: underline;
+}
+
+div h2, h3{
+    color: black;
+    text-decoration: underline;
+    text-align: left;
+    margin-bottom: -24px;
+    margin-top: -12px;
+}
+
+div p{
+    color: black;
+    text-align: left;
+}
+
+.inputRes{ /*.[name] is how you reference classes in an html file. classes are written as class="class_name" in the tag of an element*/
+    font-size: 24px;
+    color:rgb(0, 0, 82);
+}
+
+form {
+    justify-items: center;
+}
