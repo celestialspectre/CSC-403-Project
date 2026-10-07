@@ -30,15 +30,24 @@ def character():
     if not level.isdigit() or not (1 <= int(level) <= 20):
         return jsonify({"error": "level must be a whole number from 1 to 20"}), 400
 
+    pName = request.args.get("pNameField", "")
+    cClass = request.args.get("classField", "")
+    alignment = request.args.get("alignField", "")
+    race = request.args.get("raceField", "")
+    
+    if request.args.get("sheetCheck"):
+        return f"<head><title>Stat List</title><link rel=\"stylesheet\" href=\"../static/skeleton.css\" /></head><body><div class=\"statsheet\"><h1>Player Stats</h1><h2>Name</h2><p name=\"nameOut\" class=\"inputRes\">{name}</p><h2>Player</h2><p name=\"pNameOut\" class=\"inputRes\">{pName}</p><h2>Class</h2><p name=\"classOut\" class=\"inputRes\">{cClass}</p><h2>Level</h2><p name=\"lvlOut\" class=\"inputRes\">{level}</p><h2>Alignment</h2><p name=\"alignOut\" class=\"inputRes\">{alignment}</p><h2>Race</h2><p name=\"raceOut\" class=\"inputRes\">{race}</p></div></body>", 100
+
     return jsonify({
         "name": name,
-        "player": request.args.get("pNameField", ""),
-        "class": request.args.get("classField", ""),
+        "player": pName,
+        "class": cClass,
         "level": int(level),
-        "alignment": request.args.get("alignField", ""),
-        "race": request.args.get("raceField", ""),
+        "alignment": alignment,
+        "race": race,
     }), 200
 
+"""
 @app.route("/send_stats", methods=['POST'])
 def read_form():
     #these get whatever was put into the form input fields with corresponding names
@@ -55,6 +64,7 @@ def read_form():
     #return {"name" : cName}
     # this ugly string is an entire html file with the user inputs subbed in. the return creates a new page with all of their inputs
     return f"<head><title>Stat List</title><link rel=\"stylesheet\" href=\"../static/skeleton.css\" /></head><body><div class=\"statsheet\"><h1>Player Stats</h1><h2>Name</h2><p name=\"nameOut\" class=\"inputRes\">{cName}</p><h2>Player</h2><p name=\"pNameOut\" class=\"inputRes\">{pName}</p><h2>Class</h2><p name=\"classOut\" class=\"inputRes\">{cClass}</p><h2>Level</h2><p name=\"lvlOut\" class=\"inputRes\">{cLevel}</p><h2>Alignment</h2><p name=\"alignOut\" class=\"inputRes\">{cAlign}</p><h2>Race</h2><p name=\"raceOut\" class=\"inputRes\">{cRace}</p></div></body>"
+"""
 
 
 
