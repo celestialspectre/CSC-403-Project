@@ -20,8 +20,9 @@ def home():
 # returns a character as json or 400 on a bad input
 @app.route('/character', methods=['GET'])
 def character():
-    name = request.args.get("name", "").strip()
-    level = request.args.get("level", "")
+    name = request.args.get("nameField", "").strip()
+    print("work please!")
+    level = request.args.get("levelField", "")
 
     if not name:
         return jsonify({"error": "name is required"}), 400
@@ -31,11 +32,11 @@ def character():
 
     return jsonify({
         "name": name,
-        "player": request.args.get("player", ""),
-        "class": request.args.get("class", ""),
+        "player": request.args.get("playerField", ""),
+        "class": request.args.get("classField", ""),
         "level": int(level),
-        "alignment": request.args.get("alignment", ""),
-        "race": request.args.get("race", ""),
+        "alignment": request.args.get("alignmentField", ""),
+        "race": request.args.get("raceField", ""),
     }), 200
 
 @app.route("/send_stats", methods=['POST'])
