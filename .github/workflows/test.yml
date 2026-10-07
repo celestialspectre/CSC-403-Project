@@ -9,11 +9,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '18'  # Match your local Node version
-      - name: Install Dependencies
-        run: npm install
+          python-version: '3.11'
+      - name: Install Flask
+        run: python -m pip install Flask
       - name: Run Tests
-        run: npm test
+        run: python -m unittest discover -v
