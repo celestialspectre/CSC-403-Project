@@ -10,6 +10,34 @@ app = Flask(__name__)
 def index():
     return render_template('index.html') #starts off with the html file placed in the templates folder
 
+# Endpoint 1
+# status check
+@app.route('/status', methods=['GET'])
+def home():
+    return jsonify({"service": "DND Stat Holder", "status": "running"})
+
+# Endpoint 2 
+# returns a character as json or 400 on a bad input
+@app.route('/character', methods=['GET'])
+def character():
+    name = request.args.get("name", "").strip()
+    level = request.args.get("level", "")
+
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+
+    if not level.isdigit() or not (1 <= int(level) <= 20):
+        return jsonify({"error": "level must be a whole number from 1 to 20"}), 400
+
+    return jsonify({
+        "name": name,
+        "player": request.args.get("player", ""),
+        "class": request.args.get("class", ""),
+        "level": int(level),
+        "alignment": request.args.get("alignment", ""),
+        "race": request.args.get("race", ""),
+    }), 200
+
 @app.route("/send_stats", methods=['POST'])
 def read_form():
     #these get whatever was put into the form input fields with corresponding names
