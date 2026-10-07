@@ -40,7 +40,7 @@ class TestLoading(unittest.TestCase):
             "sheetCheck": "on"
         })
 
-        self.assertEqual(response.status_code, 100)
+        self.assertEqual(response.status_code, 200)
 
         html = response.get_data(as_text=True)
         self.assertIn('<h1>Player Stats</h1>', html)
