@@ -83,6 +83,51 @@ def read_form():
         </div>
 
     </body>
+    """, 200
+
+@app.route("/docs", methods=['GET'])
+def docs():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>D&D Stat Holder Documentation</title>
+    <head>
+
+    <body>
+        <h1>D&D Stat Holder</h1>
+
+        <table border="1">
+            <tr>
+                <th>Endpoint</th>
+                <th>Method</th>
+                <th>Expects</th>
+                <th>Returns</th>
+            </tr>
+
+            <tr>
+                <td>/</td>
+                <td>GET</td>
+                <td>Nothing</td>
+                <td>status code 200,Character creation page</td>
+            </tr>
+
+            <tr>
+                <td>/send_stats</td>
+                <td>POST</td>
+                <td>
+                    Character name,<br>
+                    player name,<br>
+                    class,<br>
+                    level,<br>
+                    alignment,<br>
+                    race
+                </td>
+                <td>,status code 200,Completed character stat sheet</td>
+            </tr>
+        </table>
+    </body>
+    </html>
     """
 
 
