@@ -22,7 +22,7 @@ def home():
 def character():
     name = request.args.get("nameField", "").strip()
     print("work please!")
-    level = request.args.get("levelField", "")
+    level = request.args.get("lvlField", "")
 
     if not name:
         return jsonify({"error": "name is required"}), 400
@@ -32,10 +32,10 @@ def character():
 
     return jsonify({
         "name": name,
-        "player": request.args.get("playerField", ""),
+        "player": request.args.get("pNameField", ""),
         "class": request.args.get("classField", ""),
         "level": int(level),
-        "alignment": request.args.get("alignmentField", ""),
+        "alignment": request.args.get("alignField", ""),
         "race": request.args.get("raceField", ""),
     }), 200
 
