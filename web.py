@@ -1,257 +1,436 @@
 
-# flask setup instructions: https://flask.palletsprojects.com/en/stable/installation/#install-flask
-
-from flask import Flask, render_template, render_template_string, request, redirect, url_for
-import sqlite3
+from flask import Flask, request
 
 app = Flask(__name__)
 
-# Connects to the character database
-def connect_db():
-    conn = sqlite3.connect("characters.db")
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-# Creates the character database if it does not exist
-def setup_db():
-    conn = connect_db()
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS characters (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            player TEXT NOT NULL,
-            class TEXT NOT NULL,
-            level INTEGER NOT NULL,
-            alignment TEXT NOT NULL,
-            race TEXT NOT NULL
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
-
-# Allowed character sheet inputs
-classes = [
-    "Barbarian", "Bard", "Cleric", "Druid", "Fighter",
-    "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer",
-    "Warlock", "Wizard"
-]
-
-alignments = [
-    "Lawful Good", "Neutral Good", "Chaotic Good",
-    "Lawful Neutral", "True Neutral", "Chaotic Neutral",
-    "Lawful Evil", "Neutral Evil", "Chaotic Evil"
-]
-
-races = [
-    "Human", "Elf", "Dwarf", "Halfling", "Dragonborn",
-    "Gnome", "Half-Elf", "Half-Orc", "Tiefling"
-]
-
 
 # Displays the character creation page
-@app.route("/", methods=["GET"])
+@app.route("/")
 def index():
-    return render_template("index.html")
+
+    return """
+    <!DOCTYPE html>
+    <html>
+
+    <head>
+        <title>Character Forge</title>
+
+        <style>
+
+            body {
+                background: #111111;
+                color: white;
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 40px;
+            }
+
+            .box {
+                background: #1e1e1e;
+                border: 2px solid #c9a227;
+                border-radius: 15px;
+                padding: 35px;
+                max-width: 600px;
+                margin: auto;
+                box-shadow: 0px 0px 30px #000000;
+            }
+
+            h1 {
+                color: #c9a227;
+                font-size: 42px;
+            }
+
+            h2 {
+                color: #dddddd;
+            }
+
+            input, select {
+                width: 90%;
+                padding: 12px;
+                margin: 8px;
+                border-radius: 8px;
+                border: none;
+                font-size: 16px;
+                background: #333333;
+                color: white;
+            }
+
+            button {
+                margin-top: 20px;
+                padding: 15px 35px;
+                border: none;
+                border-radius: 10px;
+                background: #c9a227;
+                color: black;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+
+            button:hover {
+                background: #e6c04f;
+            }
+
+            .symbol {
+                font-size: 50px;
+            }
+
+        </style>
+    </head>
+
+    <body>
+
+        <div class="box">
+
+            <div class="symbol">⚔️</div>
+
+            <h1>CHARACTER FORGE</h1>
+
+            <h2>Create Your Character</h2>
+
+            <p>Enter your character information below.</p>
+
+            <form action="/send_stats" method="POST">
+
+                <input
+                    type="text"
+                    name="nameField"
+                    placeholder="Character Name"
+                >
+
+                <br>
+
+                <input
+                    type="text"
+                    name="pNameField"
+                    placeholder="Player Name"
+                >
+
+                <br>
+
+                <select name="classField">
+
+                    <option value="">Choose Class</option>
+                    <option>Barbarian</option>
+                    <option>Bard</option>
+                    <option>Cleric</option>
+                    <option>Druid</option>
+                    <option>Fighter</option>
+                    <option>Monk</option>
+                    <option>Paladin</option>
+                    <option>Ranger</option>
+                    <option>Rogue</option>
+                    <option>Sorcerer</option>
+                    <option>Warlock</option>
+                    <option>Wizard</option>
+
+                </select>
+
+                <br>
+
+                <input
+                    type="number"
+                    name="lvlField"
+                    placeholder="Level"
+                    min="1"
+                    max="20"
+                >
+
+                <br>
+
+                <select name="raceField">
+
+                    <option value="">Choose Race</option>
+                    <option>Human</option>
+                    <option>Elf</option>
+                    <option>Half-Elf</option>
+                    <option>Dwarf</option>
+                    <option>Halfling</option>
+                    <option>Dragonborn</option>
+                    <option>Tiefling</option>
+                    <option>Half-Orc</option>
+                    <option>Gnome</option>
+
+                </select>
+
+                <br>
+
+                <select name="alignField">
+
+                    <option value="">Choose Alignment</option>
+                    <option>Lawful Good</option>
+                    <option>Neutral Good</option>
+                    <option>Chaotic Good</option>
+                    <option>Lawful Neutral</option>
+                    <option>True Neutral</option>
+                    <option>Chaotic Neutral</option>
+                    <option>Lawful Evil</option>
+                    <option>Neutral Evil</option>
+                    <option>Chaotic Evil</option>
+
+                </select>
+
+                <br>
+
+                <button type="submit">
+                    ⚔️ CREATE CHARACTER ⚔️
+                </button>
+
+            </form>
+
+        </div>
+
+    </body>
+
+    </html>
+    """
 
 
-# Displays the character creation menu
-@app.route("/menu", methods=["GET"])
-def menu():
-    return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>D&D Character Menu</title>
-            <link rel="stylesheet" href="/static/skeleton.css">
-        </head>
-        <body>
-            <div class="statsheet">
-                <h1>D&D Character Menu</h1>
-
-                <p>
-                    <a href="/">Create a New Character</a>
-                </p>
-
-                <p>
-                    <a href="/characters">View Existing Characters</a>
-                </p>
-            </div>
-        </body>
-        </html>
-    """)
-
-
-# Gets the information entered into the character form
+# Processes the character information from the form
 @app.route("/send_stats", methods=["POST"])
 def read_form():
 
-    # Gets each value from the form using its input name
-    cName = request.form.get("nameField", "").strip()
-    pName = request.form.get("pNameField", "").strip()
-    cClass = request.form.get("classField", "").strip()
-    cLevel = request.form.get("lvlField", "").strip()
-    cAlign = request.form.get("alignField", "").strip()
-    cRace = request.form.get("raceField", "").strip()
+    # Gets the information entered by the player
+    character_name = request.form.get("nameField")
+    player_name = request.form.get("pNameField")
+    character_class = request.form.get("classField")
+    character_level = request.form.get("lvlField")
+    character_race = request.form.get("raceField")
+    character_alignment = request.form.get("alignField")
 
-    # Checks that all required fields have been entered
-    if not all([cName, pName, cClass, cLevel, cAlign, cRace]):
-        return "Invalid input: All fields are required.", 400
+    # Gives default values if a field is left blank
+    if not character_name:
+        character_name = "Unknown Character"
 
-    # Restricts the length of names
-    if len(cName) > 50 or len(pName) > 50:
-        return "Invalid input: Names must be 50 characters or less.", 400
+    if not player_name:
+        player_name = "Unknown Player"
 
-    # Checks that the level is a number
-    try:
-        cLevel = int(cLevel)
-    except ValueError:
-        return "Invalid input: Level must be a number.", 400
+    if not character_class:
+        character_class = "Adventurer"
 
-    # Restricts the character level to 1 through 10
-    if cLevel < 1 or cLevel > 20:
-        return "Invalid input: Level must be between 1 and 20.", 400
+    if not character_level:
+        character_level = "1"
 
-    # Checks that the class, alignment, and race are allowed
-    if cClass not in classes:
-        return "Invalid input: Select a valid class.", 400
+    if not character_race:
+        character_race = "Unknown"
 
-    if cAlign not in alignments:
-        return "Invalid input: Select a valid alignment.", 400
+    if not character_alignment:
+        character_alignment = "Unaligned"
 
-    if cRace not in races:
-        return "Invalid input: Select a valid race.", 400
+    # Displays the completed character sheet
+    return f"""
+    <!DOCTYPE html>
 
-    # Saves the new character in the database
-    conn = connect_db()
+    <html>
 
-    conn.execute("""
-        INSERT INTO characters
-        (name, player, class, level, alignment, race)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (cName, pName, cClass, cLevel, cAlign, cRace))
+    <head>
 
-    conn.commit()
+        <title>{character_name} - Character Sheet</title>
 
-    # Gets the ID of the new character
-    character_id = conn.execute(
-        "SELECT last_insert_rowid()"
-    ).fetchone()[0]
+        <style>
 
-    conn.close()
+            body {{
+                background:
+                    linear-gradient(
+                        135deg,
+                        #080808,
+                        #191919,
+                        #080808
+                    );
 
-    # Opens the saved character sheet
-    return redirect(url_for("view_character", character_id=character_id))
+                color: white;
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 40px;
+            }}
 
+            .sheet {{
+                max-width: 750px;
+                margin: auto;
+                background: #171717;
+                border: 3px solid #c9a227;
+                border-radius: 20px;
+                padding: 40px;
+                box-shadow: 0px 0px 50px #000000;
+            }}
 
-# Displays a list of saved characters
-@app.route("/characters", methods=["GET"])
-def character_list():
-    conn = connect_db()
+            .weapon {{
+                font-size: 60px;
+            }}
 
-    characters = conn.execute(
-        "SELECT id, name, player FROM characters ORDER BY id DESC"
-    ).fetchall()
+            .title {{
+                color: #c9a227;
+                font-size: 18px;
+                letter-spacing: 6px;
+            }}
 
-    conn.close()
+            h1 {{
+                font-size: 48px;
+                margin: 10px;
+                color: white;
+            }}
 
-    return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Existing Characters</title>
-            <link rel="stylesheet" href="/static/skeleton.css">
-        </head>
-        <body>
-            <div class="statsheet">
-                <h1>Existing Characters</h1>
+            .level {{
+                display: inline-block;
+                background: #c9a227;
+                color: black;
+                padding: 8px 20px;
+                border-radius: 20px;
+                font-weight: bold;
+            }}
 
-                {% if characters %}
-                    <ul>
-                    {% for character in characters %}
-                        <li>
-                            <a href="{{ url_for(
-                                'view_character',
-                                character_id=character['id']
-                            ) }}">
-                                {{ character['name'] }}
-                            </a>
-                            - Player: {{ character['player'] }}
-                        </li>
-                    {% endfor %}
-                    </ul>
-                {% else %}
-                    <p>No characters have been created yet.</p>
-                {% endif %}
+            .stats {{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-top: 40px;
+            }}
 
-                <p><a href="/menu">Back to Menu</a></p>
-                <p><a href="/">Create a New Character</a></p>
+            .stat {{
+                background: #222222;
+                border: 1px solid #555555;
+                border-radius: 12px;
+                padding: 25px;
+            }}
+
+            .stat-name {{
+                color: #999999;
+                font-size: 13px;
+                letter-spacing: 3px;
+            }}
+
+            .stat-value {{
+                color: #c9a227;
+                font-size: 24px;
+                font-weight: bold;
+                margin-top: 10px;
+            }}
+
+            .divider {{
+                margin: 35px;
+                color: #c9a227;
+                font-size: 25px;
+            }}
+
+            a {{
+                display: inline-block;
+                margin-top: 30px;
+                padding: 12px 25px;
+                border: 1px solid #c9a227;
+                border-radius: 8px;
+                color: #c9a227;
+                text-decoration: none;
+            }}
+
+            a:hover {{
+                background: #c9a227;
+                color: black;
+            }}
+
+        </style>
+
+    </head>
+
+    <body>
+
+        <div class="sheet">
+
+            <div class="weapon">
+                ⚔️
             </div>
-        </body>
-        </html>
-    """, characters=characters)
 
-
-# Displays the full stats for a selected character
-@app.route("/characters/<int:character_id>", methods=["GET"])
-def view_character(character_id):
-    conn = connect_db()
-
-    character = conn.execute(
-        "SELECT * FROM characters WHERE id = ?",
-        (character_id,)
-    ).fetchone()
-
-    conn.close()
-
-    # Returns an error if the character does not exist
-    if character is None:
-        return "Character not found.", 404
-
-    return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Character Stats</title>
-            <link rel="stylesheet" href="/static/skeleton.css">
-        </head>
-        <body>
-            <div class="statsheet">
-                <h1>Character Stats</h1>
-
-                <h2>Character Name</h2>
-                <p class="inputRes">{{ character['name'] }}</p>
-
-                <h2>Player</h2>
-                <p class="inputRes">{{ character['player'] }}</p>
-
-                <h2>Class</h2>
-                <p class="inputRes">{{ character['class'] }}</p>
-
-                <h2>Level</h2>
-                <p class="inputRes">{{ character['level'] }}</p>
-
-                <h2>Alignment</h2>
-                <p class="inputRes">{{ character['alignment'] }}</p>
-
-                <h2>Race</h2>
-                <p class="inputRes">{{ character['race'] }}</p>
-
-                <p><a href="/characters">Back to Characters</a></p>
-                <p><a href="/menu">Back to Menu</a></p>
+            <div class="title">
+                CHARACTER SHEET
             </div>
-        </body>
-        </html>
-    """, character=character)
+
+            <h1>
+                {character_name}
+            </h1>
+
+            <div class="level">
+                LEVEL {character_level}
+            </div>
+
+            <div class="divider">
+                ✦ ───────── ✦
+            </div>
+
+            <div class="stats">
+
+                <div class="stat">
+
+                    <div class="stat-name">
+                        PLAYER
+                    </div>
+
+                    <div class="stat-value">
+                        {player_name}
+                    </div>
+
+                </div>
+
+                <div class="stat">
+
+                    <div class="stat-name">
+                        CLASS
+                    </div>
+
+                    <div class="stat-value">
+                        ⚔️ {character_class}
+                    </div>
+
+                </div>
+
+                <div class="stat">
+
+                    <div class="stat-name">
+                        RACE
+                    </div>
+
+                    <div class="stat-value">
+                        🧬 {character_race}
+                    </div>
+
+                </div>
+
+                <div class="stat">
+
+                    <div class="stat-name">
+                        ALIGNMENT
+                    </div>
+
+                    <div class="stat-value">
+                        ☯️ {character_alignment}
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="divider">
+                ✦ ───────── ✦
+            </div>
+
+            <h2>
+                CHARACTER CREATED
+            </h2>
+
+            <p>
+                Your adventure begins now.
+            </p>
+
+            <a href="/">
+                ← CREATE ANOTHER CHARACTER
+            </a>
+
+        </div>
+
+    </body>
+
+    </html>
+    """
 
 
-# Creates the database before the application starts
-setup_db()
-
-
-# Starts the Flask application
+# Starts the Flask server
 if __name__ == "__main__":
     app.run(debug=True)
