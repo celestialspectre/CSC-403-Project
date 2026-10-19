@@ -2,13 +2,74 @@
 
 from flask import *
 import sqlite3 #later for database integration (if we go with that instead of csv files)
+import hashlib #for hashing the user password
 
 app = Flask(__name__)
 
 
 @app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html') #starts off with the html file placed in the templates folder
+    return render_template('login.html') #starts off with the html file placed in the templates folder. For now, this will be the login screen
+
+@app.route('/login', methods=['GET'])
+def login():
+    print("hi")
+    username = request.args.get("username", "")
+    password = request.args.get("password", "")
+
+    if len(username) < 0:
+        return jsonify({"error": "username is required"}), 400
+    if len(password) < 0:
+        return jsonify({"error": "password is required"}), 400
+
+    # ===
+    # logic for comparing username + password hash to database goes here
+    # ===
+
+
+    return """
+        <head>
+            <title>DND Stat Input</title> <!--name of the tab-->
+            <link rel="stylesheet" href="../static/styles/skeleton.css" /> <!--connects the stylesheet (css) to the page-->
+        </head>
+
+
+        <body> 
+            <center>
+            <form action="/character" method="GET"> <!--sends the form data to the /character endpoint in web.py as a string-->
+                <label>Name: </label> <!--label for text box-->
+                <input name="nameField"> <!--actual text box-->
+                <br /> <!--a line breal to separate elements better-->
+                
+                <label>Player: </label>
+                <input name="pNameField">
+                <br />
+                
+                
+                <label>Class: </label>
+                <input name="classField">
+                <br />
+                
+                <label>Level: </label>
+                <input name="lvlField">
+                <br />
+                
+                <label>Alignment: </label>
+                <input name="alignField">
+                <br />
+                
+                <label>Race: </label>
+                <input name="raceField">
+                <br />
+
+                <label>Check this to go to the character sheet</label>
+                <input type="checkbox" name="sheetCheck">
+
+                <button>Submit</button> <!--submit button-->
+                <br />
+            </form>
+            </center>
+    """,200
 
 # Endpoint 1
 # status check
@@ -36,7 +97,29 @@ def character():
     race = request.args.get("raceField", "")
     
     if request.args.get("sheetCheck"):
-        return f"<head><title>Stat List</title><link rel=\"stylesheet\" href=\"../static/skeleton.css\" /></head><body><div class=\"statsheet\"><h1>Player Stats</h1><h2>Name</h2><p name=\"nameOut\" class=\"inputRes\">{name}</p><h2>Player</h2><p name=\"pNameOut\" class=\"inputRes\">{pName}</p><h2>Class</h2><p name=\"classOut\" class=\"inputRes\">{cClass}</p><h2>Level</h2><p name=\"lvlOut\" class=\"inputRes\">{level}</p><h2>Alignment</h2><p name=\"alignOut\" class=\"inputRes\">{alignment}</p><h2>Race</h2><p name=\"raceOut\" class=\"inputRes\">{race}</p></div></body>", 200
+        return f"""
+        <head>
+            <title>Stat List</title>
+            <link rel=\"stylesheet\" href=\"../static/styles/skeleton.css\" />
+        </head>
+
+        <body>
+            <div class=\"statsheet\">
+                <h1>Player Stats</h1>
+                <h2>Name</h2>
+                <p name=\"nameOut\" class=\"inputRes\">{name}</p>
+                <h2>Player</h2>
+                <p name=\"pNameOut\" class=\"inputRes\">{pName}</p>
+                <h2>Class</h2>
+                <p name=\"classOut\" class=\"inputRes\">{cClass}</p>
+                <h2>Level</h2>
+                <p name=\"lvlOut\" class=\"inputRes\">{level}</p>
+                <h2>Alignment</h2>
+                <p name=\"alignOut\" class=\"inputRes\">{alignment}</p>
+                <h2>Race</h2>
+                <p name=\"raceOut\" class=\"inputRes\">{race}</p>
+            </div>
+        </body>""", 200
 
     return jsonify({
         "name": name,
