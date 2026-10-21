@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" href="static/styles/skeleton.css" />
+</head>
+
+<body>
+    <center> 
+        <h1>Welcome to the DND Character Hub!</h1>
+        
+        <form action="/login" method="GET">
+            <label for="username">Username </label>
+            <br />
+            <input class="field" type="text" name="username" required />
+            <br />
+            
+            <label for="password">Password</label>
+            <br />
+            <input class="field" type="password" name="password" minlength="8" required pattern="[0-9a-zA-Z]*[\(\)\[\]\{\}:;.<>.,\/`~!@#$%^&*\+\-_=\*]+[0-9a-zA-Z]*" />
+            <br />
+            <br />
+            <button>Login</button>
+            <p>*Note: Password must contain one special character and be 8 characters long</p>
+            
+        </form>
+
+
+        <marquee>
+            <img src="static/img/dnd.png" style="width: 10%; height: auto;"/>
+        </marquee>
+
+    </center>
+</body>
