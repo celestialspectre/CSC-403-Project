@@ -6,16 +6,21 @@ import hashlib #for hashing the user password
 
 app = Flask(__name__)
 
+# format: @app.route('websitename.xxx/[THIS RIGHT HERE]', methods=['GET'])
+
+
 # endpoint; url will say '/' when index returns
-@app.route('/', methods=['GET'])
-
-## runs when page opens, starts off with the html file placed in the templates folder. For now, this will be the login screen
-def index():
-    return render_template('login.html')
-
 @app.route('/login', methods=['GET'])
-def login():
-    print("hi")
+
+## runs when page opens, starts off with the html file placed in
+## the templates folder. For now, this will be the login screen
+def index():
+    return render_template('login.html') # loads the login.html page
+
+
+@app.route('/main', methods=['GET'])
+def main_menu():
+    # get username and password inputted from login page
     username = request.args.get("username", "")
     password = request.args.get("password", "")
 
@@ -24,10 +29,21 @@ def login():
     if len(password) < 0:
         return jsonify({"error": "password is required"}), 400
 
+    return render_template("main.html")
+
+@app.route('/character-creator', methods=['GET'])
+def character_creator():
+    # username = request.args.get("username", "")
+    # password = request.args.get("password", "")
+
+    # if len(username) < 0:
+    #     return jsonify({"error": "username is required"}), 400
+    # if len(password) < 0:
+    #     return jsonify({"error": "password is required"}), 400
+
     # ===
     # logic for comparing username + password hash to database goes here
     # ===
-
 
     return """
         <head>
@@ -35,32 +51,31 @@ def login():
             <link rel="stylesheet" href="../static/styles/skeleton.css" /> <!--connects the stylesheet (css) to the page-->
         </head>
 
-
         <body> 
             <center>
             <form action="/character" method="GET"> <!--sends the form data to the /character endpoint in web.py as a string-->
                 <label>Character Name: </label> <!--label for text box-->
-                <input name="nameField"> <!--actual text box-->
+                <input required name="nameField"> <!--actual text box-->
                 <br /> <!--a line breal to separate elements better-->
                 
                 <label>Player Name: </label>
-                <input name="pNameField">
+                <input required name="pNameField">
                 <br />
                 
                 <label>Class: </label>
-                <input name="classField">
+                <input required name="classField">
                 <br />
                 
                 <label>Level: </label>
-                <input name="lvlField" type="number" min="1" max="20" step="1">
+                <input required name="lvlField" type="number" min="1" max="20" step="1">
                 <br />
                 
                 <label>Alignment: </label>
-                <input name="alignField">
+                <input required name="alignField">
                 <br />
                 
                 <label>Race: </label>
-                <input name="raceField">
+                <input required name="raceField">
                 <br />
 
                 <label>Check this to go to the character sheet</label>
@@ -86,50 +101,44 @@ def character():
     print("work please!")
     level = request.args.get("lvlField", "")
 
-    if not name:
-        return jsonify({"error": "name is required"}), 400
-
-    if not level.isdigit() or not (1 <= int(level) <= 20):
-        return jsonify({"error": "level must be a whole number from 1 to 20"}), 400
-
     pName = request.args.get("pNameField", "")
     cClass = request.args.get("classField", "")
     alignment = request.args.get("alignField", "")
     race = request.args.get("raceField", "")
     
     if request.args.get("sheetCheck"):
-        return f"""
-        <head>
-            <title>Stat List</title>
-            <link rel=\"stylesheet\" href=\"../static/styles/skeleton.css\" />
-        </head>
+        return jsonify({
+            "name": name,
+            "player": pName,
+            "class": cClass,
+            "level": int(level),
+            "alignment": alignment,
+            "race": race,
+        }), 200
+    return f"""
+    <head>
+        <title>Stat List</title>
+        <link rel=\"stylesheet\" href=\"../static/styles/skeleton.css\" />
+    </head>
 
-        <body>
-            <div class=\"statsheet\">
-                <h1>Player Stats</h1>
-                <h2>Name</h2>
-                <p name=\"nameOut\" class=\"inputRes\">{name}</p>
-                <h2>Player</h2>
-                <p name=\"pNameOut\" class=\"inputRes\">{pName}</p>
-                <h2>Class</h2>
-                <p name=\"classOut\" class=\"inputRes\">{cClass}</p>
-                <h2>Level</h2>
-                <p name=\"lvlOut\" class=\"inputRes\">{level}</p>
-                <h2>Alignment</h2>
-                <p name=\"alignOut\" class=\"inputRes\">{alignment}</p>
-                <h2>Race</h2>
-                <p name=\"raceOut\" class=\"inputRes\">{race}</p>
-            </div>
-        </body>""", 200
+    <body>
+        <div class=\"statsheet\">
+            <h1>Player Stats</h1>
+            <h2>Name</h2>
+            <p name=\"nameOut\" class=\"inputRes\">{name}</p>
+            <h2>Player</h2>
+            <p name=\"pNameOut\" class=\"inputRes\">{pName}</p>
+            <h2>Class</h2>
+            <p name=\"classOut\" class=\"inputRes\">{cClass}</p>
+            <h2>Level</h2>
+            <p name=\"lvlOut\" class=\"inputRes\">{level}</p>
+            <h2>Alignment</h2>
+            <p name=\"alignOut\" class=\"inputRes\">{alignment}</p>
+            <h2>Race</h2>
+            <p name=\"raceOut\" class=\"inputRes\">{race}</p>
+        </div>
+    </body>""", 200
 
-    return jsonify({
-        "name": name,
-        "player": pName,
-        "class": cClass,
-        "level": int(level),
-        "alignment": alignment,
-        "race": race,
-    }), 200
 
 @app.route("/docs", methods=['GET'])
 def docs():

@@ -17,8 +17,17 @@ flow of website:
 
 
 
+main menu
+[x] new button
+    [x] takes you to character creator
+[x] list of characters
+    [/] takes you to respective character sheet
 
 
-
-
-sign in --> make character --> sheet
+the story
+[x] Different characters can be selected 
+    [] Allow for multiple characters to be created
+        [X] There is a button for creating new characters
+            [X] There is a character creation menu
+        [X] There is a button for viewing existing characters
+            [X] Characters can be selected from this menu
