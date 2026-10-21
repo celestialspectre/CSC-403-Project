@@ -6,10 +6,12 @@ import hashlib #for hashing the user password
 
 app = Flask(__name__)
 
-
+# endpoint; url will say '/' when index returns
 @app.route('/', methods=['GET'])
+
+## runs when page opens, starts off with the html file placed in the templates folder. For now, this will be the login screen
 def index():
-    return render_template('login.html') #starts off with the html file placed in the templates folder. For now, this will be the login screen
+    return render_template('login.html')
 
 @app.route('/login', methods=['GET'])
 def login():
@@ -37,21 +39,20 @@ def login():
         <body> 
             <center>
             <form action="/character" method="GET"> <!--sends the form data to the /character endpoint in web.py as a string-->
-                <label>Name: </label> <!--label for text box-->
+                <label>Character Name: </label> <!--label for text box-->
                 <input name="nameField"> <!--actual text box-->
                 <br /> <!--a line breal to separate elements better-->
                 
-                <label>Player: </label>
+                <label>Player Name: </label>
                 <input name="pNameField">
                 <br />
-                
                 
                 <label>Class: </label>
                 <input name="classField">
                 <br />
                 
                 <label>Level: </label>
-                <input name="lvlField">
+                <input name="lvlField" type="number" min="1" max="20" step="1">
                 <br />
                 
                 <label>Alignment: </label>

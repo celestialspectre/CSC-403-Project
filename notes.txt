@@ -1,0 +1,24 @@
+[X] sign in should be "at least 8 characters"
+[X] name --> character name
+[ ] player name is not needed (tied to user account anyway)
+[X] level should be integer exclusive
+[ ] alignment should be a drop-down
+[ ] class and race should be drop-down (can add to by making new but thats not sprint 1)
+
+[ ] character sheet is ugly
+
+
+
+flow of website:
+* sign in page
+* "main menu" --> list of created characters, [NEW] button for new character
+    * [NEW] --> character creation page --> character sheet
+    * click on character --> character sheet --> button to go back to main menu
+
+
+
+
+
+
+
+sign in --> make character --> sheet
