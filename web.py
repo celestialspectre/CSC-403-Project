@@ -45,6 +45,12 @@ def character_creator():
     # logic for comparing username + password hash to database goes here
     # ===
 
+    # temporary character saving stuff, once database is fully made this can be changed however we need
+    with sqlite3.connect('characters.db') as conn:
+        conn.execute('CREATE TABLE IF NOT EXISTS characters (id INTEGER PRIMARY KEY, name TEXT, player TEXT, class_name TEXT, level INTEGER, alignment TEXT, race TEXT)')
+        characters = conn.execute('SELECT id, name, class_name, level FROM characters ORDER BY id DESC').fetchall()
+        
+
     return """
         <head>
             <title>DND Stat Input</title> <!--name of the tab-->
