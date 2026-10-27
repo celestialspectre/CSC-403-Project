@@ -1,12 +1,24 @@
+/*Special font import*/
+@import url('https://fonts.googleapis.com/css2?family=Young+Serif&display=swap');
+
+.young-serif-regular {
+    font-family: "Young Serif", serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
 /*The code that controls all of the visual flair of the html pages that link to it. most*/
 
 body {
-    background-color: rgb(125, 50, 0);
+    /*background-image: url(../img/leather2.jpg);*/
+    background-image: url(https://t4.ftcdn.net/jpg/04/68/58/21/360_F_468582130_EOx6UIihZrCBKjXG1ePuOIVVBfSvYFGb.jpg);
+    background-color: rgb(46, 18, 0);
 }
 
 h1, h2, h3, form label{
-    color: white; /*color refers to text color*/
+    color: rgb(214, 221, 255); /*color refers to text color*/
     text-align: center;
+    font-family: 'Young Serif';
 }
 
 form label{
@@ -14,7 +26,7 @@ form label{
 }
 
 p {
-    color:gray;
+    color:rgb(236, 244, 93);
 }
 
 .statsheet{
@@ -59,3 +71,37 @@ div p{
 form {
     justify-items: center;
 }
+
+@keyframes button-focus{
+    100%{scale: 110%; transform: translateY(-2px)}
+}
+
+@keyframes spin{
+    100%{rotate: 360deg}
+}
+
+input {
+    border-radius: 5px;
+}
+
+button {
+    background: linear-gradient(45deg, #ffba08 0%,  #fff0ca 100%);
+    border-radius: 7px;
+    border-color: #06fff7;
+    border-style:solid;
+    border-width: .5px;
+}
+
+button:hover, div.char_tab:hover {
+    animation-name: button-focus;
+    animation-duration: .1s;
+    animation-fill-mode: forwards;
+    animation-timing-function: ease-in-out;
+
+}
+
+img:active {
+    animation-name: spin;
+    animation-duration: .3s;
+}
+

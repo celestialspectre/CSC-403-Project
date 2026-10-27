@@ -84,14 +84,26 @@ def character_creator():
                 <input required name="raceField">
                 <br />
 
-                <label>Check this to go to the character sheet</label>
+                <label>Check this to go to the json output</label>
                 <input type="checkbox" name="sheetCheck">
 
                 <button>Submit</button> <!--submit button-->
                 <br />
             </form>
             </center>
-    """,200
+
+            <!--new saved character section of site to list saved characters (what no way)
+            <section class="saved-characters">
+                <h2>Saved Characters</h2>
+                {% if characters %}
+                    {% for character in characters %}
+                        <p><a href="{{ url_for('saved_character', character_id=character[0]) }}">{{ character[1] }} — {{ character[2] }}, Level {{ character[3] }}</a></p>
+                    {% endfor %}
+                {% else %}
+                    <p>No characters saved yet.</p>
+                {% endif %}
+            </section>-->
+            """,200
 
 # Endpoint 1
 # status check
