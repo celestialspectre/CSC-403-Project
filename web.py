@@ -1,10 +1,11 @@
 # flask setup instructions: https://flask.palletsprojects.com/en/stable/installation/#install-flask
 
+
 from flask import *
 import sqlite3 #later for database integration (if we go with that instead of csv files)
 import hashlib #for hashing the user password
 
-app = Flask(__name__)
+app = Flask(__name__) 
 
 # format: @app.route('websitename.xxx/[THIS RIGHT HERE]', methods=['GET'])
 
@@ -84,7 +85,7 @@ def character_creator():
                 <input required name="raceField">
                 <br />
 
-                <label>Check this to go to the character sheet</label>
+                <label>Check this to go to the json output</label>
                 <input type="checkbox" name="sheetCheck">
 
                 <button>Submit</button> <!--submit button-->
