@@ -1,5 +1,5 @@
 /*Special font import*/
-@import url('https://fonts.googleapis.com/css2?family=Young+Serif&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cedarville+Cursive&family=Tangerine:wght@400;700&family=Young+Serif&family=Zhi+Mang+Xing&display=swap');
 
 .young-serif-regular {
     font-family: "Young Serif", serif;
@@ -7,35 +7,94 @@
     font-style: normal;
 }
 
+.cedarville-cursive-regular {
+  font-family: "Cedarville Cursive", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.tangerine-regular {
+  font-family: "Tangerine", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.tangerine-bold {
+  font-family: "Tangerine", cursive;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.zhi-mang-xing-regular {
+  font-family: "Zhi Mang Xing", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
+
+
 /*The code that controls all of the visual flair of the html pages that link to it. most*/
 
 body {
     /*background-image: url(../img/leather2.jpg);*/
     background-image: url(https://t4.ftcdn.net/jpg/04/68/58/21/360_F_468582130_EOx6UIihZrCBKjXG1ePuOIVVBfSvYFGb.jpg);
     background-color: rgb(46, 18, 0);
+    font-family: 'Zhi Mang Xing', cursive;
+    padding: 24px;
 }
+
+div.char_tab{
+    font-family: 'Young Serif', serif;
+}
+
+marquee {
+    margin-left: -34px;
+    margin-right: -34px;
+}
+
+/*#triangle-up {
+    height: 0;
+    width: 0;
+    border-left: 500px solid transparent;
+    border-right: 500px solid transparent;
+    border-bottom: 100px solid rgb(146, 0, 0);
+}
+
+#triangle-down {
+    height: 0;
+    width: 0;
+    border-left: 800px solid transparent;
+    border-right: 800px solid transparent;
+    border-top: 100px solid rgb(146, 0, 0);
+    padding-bottom: 10px;
+}
+
+.border-decor {
+    margin: -34px;
+    padding: 10px;
+}*/
 
 h1, h2, h3, form label{
     color: rgb(214, 221, 255); /*color refers to text color*/
     text-align: center;
-    font-family: 'Young Serif';
+    /*font-family: 'Young Serif';*/
 }
 
 form label{
     font-size:larger;
 }
 
-p {
-    color:rgb(236, 244, 93);
-}
-
 .statsheet{
     background-color: rgb(225,225,50);
+    background-image: url(../img/paper2.jpg);
+    border-color: #743600;
+    border-radius: 2px;
+    border-style: solid;
+    border-width: 2px;
     justify-self: center;
     text-align: center;
     width: 40%;
     height:auto;
-    border-radius: 24px;
     padding: 2%;
     margin-bottom: 5%;
 
@@ -45,12 +104,12 @@ p {
     background-color: rgb(234, 234, 60);
 }
 
-div h1{
+div.statsheet h1{
     color: black;
     text-decoration: underline;
 }
 
-div h2, h3{
+div.char_tab h2, h3{
     color: black;
     text-decoration: underline;
     text-align: left;
@@ -58,7 +117,15 @@ div h2, h3{
     margin-top: -12px;
 }
 
-div p{
+div.statsheet h2, h3{
+    color: black;
+    text-decoration: underline;
+    text-align: left;
+    margin-bottom: -24px;
+    margin-top: -12px;
+}
+
+div.statsheet p{
     color: black;
     text-align: left;
 }
@@ -66,10 +133,6 @@ div p{
 .inputRes{ /*.[name] is how you reference classes in an html file. classes are written as class="class_name" in the tag of an element*/
     font-size: 24px;
     color:rgb(0, 0, 82);
-}
-
-form {
-    justify-items: center;
 }
 
 @keyframes button-focus{
@@ -84,12 +147,22 @@ input {
     border-radius: 5px;
 }
 
-button {
+/*button {
     background: linear-gradient(45deg, #ffba08 0%,  #fff0ca 100%);
     border-radius: 7px;
     border-color: #d90000;
     border-style:solid;
     border-width: 2px;
+    font-family: 'Young Serif';
+}*/
+
+button {
+    background: linear-gradient(-45deg, #dbdada 0%,  #b1b1b1 100%);
+    border-radius: 7px;
+    border-color: black;
+    border-style:double;
+    border-width: 2px;
+    font-family: 'Young Serif';
 }
 
 button:hover, div.char_tab:hover {
@@ -105,3 +178,56 @@ img:active {
     animation-duration: .3s;
 }
 
+div.login_border {
+    background-color: rgb(23, 24, 25);
+    background-image: url(../img/paper2.jpg);
+    justify-self: center;
+    padding: 20px;
+    margin: 10px;
+    vertical-align: bottom;
+    border-image-source: url(../img/fancy_border.webp);
+    border-image-width: auto;
+    border-image-repeat: fill;
+    border-image-outset: 0.25in;
+    border-image-slice: 750;
+    margin-bottom: 25px;
+}
+
+div.login_border h1{
+    color: rgba(0, 0, 0, 0.529);
+    font-family: "Tangerine", cursive;
+    font-size: 45px;
+    margin-bottom: 2px;
+    margin-top: 10px;
+}
+
+div.login_border p, div.login_border form label {
+    color: rgb(42, 42, 42);
+    font-family: "Zhi Mang Xing", cursive;
+    font-size: x-large;
+}
+
+/*div.char_container {
+    background-color: rgb(137, 1, 1);
+    justify-self: left;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    padding: 10px;
+    padding-left: 24px;
+    width: 43%;
+
+    -webkit-flex: 1;
+    -ms-flex: 1;
+    flex: 1;
+}
+
+div.main_elements {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+
+    -webkit-flex: 1;
+    -ms-flex: 1;
+    flex: 1;
+}*/

@@ -83,9 +83,7 @@ def character_creator():
                 <label>Race: </label>
                 <input required name="raceField">
                 <br />
-
-                <label>Check this to go to the json output</label>
-                <input type="checkbox" name="sheetCheck">
+                <br />
 
                 <button>Submit</button> <!--submit button-->
                 <br />
@@ -124,15 +122,15 @@ def character():
     alignment = request.args.get("alignField", "")
     race = request.args.get("raceField", "")
     
-    if request.args.get("sheetCheck"):
-        return jsonify({
-            "name": name,
-            "player": pName,
-            "class": cClass,
-            "level": int(level),
-            "alignment": alignment,
-            "race": race,
-        }), 200
+    #if request.args.get("sheetCheck"):
+    #    return jsonify({
+    #        "name": name,
+    #        "player": pName,
+    #        "class": cClass,
+    #        "level": int(level),
+    #        "alignment": alignment,
+    #        "race": race,
+    #    }), 200
     return f"""
     <head>
         <title>Stat List</title>
