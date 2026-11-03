@@ -59,3 +59,111 @@ div p{
 form {
     justify-items: center;
 }
+
+
+/* for char sheet */
+.sheet-container {
+    max-width: 1050px; 
+    margin: 24px auto; 
+    padding: 18px; 
+    background: #f6ebcf; 
+    border-radius: 14px; 
+}
+
+.sheet-container h1, .sheet-container h2, .sheet-container h3, .sheet-container label {
+    color: #242424; 
+    text-align: left;
+}
+
+.sheet-container h2, .sheet-container h3 {
+    margin: 10px 0;
+}
+
+.sheet-section {
+    background: white; 
+    padding: 16px; 
+    margin: 16px 0; 
+    border-radius: 9px;
+}
+
+/* puts fields (ability scores, etc) into columns */
+.sheet-grid {
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); 
+    gap: 12px;
+}
+
+.sheet-container input:not([type=checkbox]), .sheet-container textarea {
+    width: 100%; 
+    box-sizing: border-box; 
+    padding: 7px; 
+    margin: 4px 0;
+}
+
+.sheet-container label {
+    display: block; 
+    font-size: 14px;
+}
+
+.sheet-container .check-label {
+    display: flex; 
+    gap: 8px; 
+    align-items: center;
+}
+
+.sheet-container .check-label input {
+    width: auto;
+}
+
+.sheet-container .row-fields {
+    display: grid; 
+    grid-template-columns: 2fr 1fr 2fr; 
+    gap: 10px; 
+    margin-bottom: 10px;
+}
+
+.sheet-container .resource-fields {
+    grid-template-columns: 2fr 1fr 1fr;
+}
+
+.sheet-container .muted {
+    color: #555;
+}
+
+.sheet-container .save-button {
+    padding: 12px 26px; 
+    font-weight: bold;
+}
+
+.character-link {
+    display:block; 
+    background:antiquewhite; 
+    margin-top:25px; 
+    padding:12px 15px; 
+    width:min(400px,90%); 
+    text-decoration:none; 
+    color:black;
+}
+
+.character-link h2, .character-link h4 {
+    color:black; 
+    text-align:left; 
+    margin:6px 0;
+}
+
+/* for pictures */
+@media (max-width: 600px) {
+    .sheet-container .row-fields {grid-template-columns: 1fr;}
+}
+
+.excel-section textarea { 
+    min-height: 76px; 
+    resize: vertical; 
+}
+
+.sheet-static { 
+    padding: 10px; 
+    border: 1px solid #aaa; 
+    border-radius: 6px; 
+}
+

@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html><head><title>DND Stat Input</title><link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}"></head>
+<body><center><h1>New Character</h1>
+<form action="{{ url_for('create_character') }}" method="POST" novalidate>
+<label>Character Name:</label><input required name="nameField"><br>
+<label>Player Name:</label><input required name="pNameField"><br>
+<label>Class:</label><input required name="classField"><br>
+<label>Level:</label><input required name="lvlField" type="number" min="1" max="20" step="1"><br>
+<label>Alignment:</label><input required name="alignField"><br>
+<label>Race:</label><input required name="raceField"><br>
+<button type="submit">Create Character</button>
+</form></center></body></html>
