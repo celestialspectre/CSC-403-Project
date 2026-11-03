@@ -1,6 +1,6 @@
-
 import os
 import sqlite3
+import dice_roll
 
 from flask import (
     Flask,
@@ -10,6 +10,7 @@ from flask import (
     render_template_string,
     flash,
 )
+
 from flask_login import (
     LoginManager,
     UserMixin,
@@ -18,7 +19,24 @@ from flask_login import (
     login_required,
     current_user,
 )
+
 from werkzeug.security import generate_password_hash, check_password_hash
+
+from dice_roll import (
+    roll_dice,
+    d4,
+    d6,
+    d8,
+    d10,
+    d12,
+    d20,
+    d100,
+    advantage,
+    disadvantage,
+    multiple_dice,
+    roll_with_modifier
+)
+
 
 app = Flask(__name__)
 
@@ -28,14 +46,17 @@ app.config["SECRET_KEY"] = os.environ.get(
 )
 
 # Database file will be created in the same folder as web.py.
-DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "characters.db")
+DATABASE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "characters.db"
+)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
 
-#DATABASE
+# DATABASE
 
 def get_db():
     connection = sqlite3.connect(DATABASE)
@@ -71,7 +92,7 @@ def initialize_database():
 initialize_database()
 
 
-#USER LOGIN 
+# USER LOGIN
 
 class User(UserMixin):
     def __init__(self, user_id, username):
@@ -93,7 +114,7 @@ def load_user(user_id):
     return None
 
 
-#HTML
+# HTML
 
 STYLE = """
 <style>
@@ -202,20 +223,22 @@ STYLE = """
 """
 
 
-#LOGIN PAGE
+# LOGIN PAGE
 
 LOGIN_HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Character Forge - Login</title>
+    <title>Welcome to Dungeon & Dragons! - Login</title>
     """ + STYLE + """
 </head>
 <body>
 <div class="container">
-    <h1>Character Forge</h1>
+    <h1>Welcome to Dungeon & Dragons!</h1>
     <h2>Login</h2>
-    <p style="text-align:center;">Sign in to create and manage your characters.</p>
+    <p style="text-align:center;">
+        Sign in to create and manage your characters.
+    </p>
 
     {% with messages = get_flashed_messages() %}
       {% for message in messages %}
@@ -225,7 +248,8 @@ LOGIN_HTML = """
 
     <form method="POST" action="{{ url_for('login') }}">
         <label for="username">Username</label>
-        <input id="username" name="username" required autocomplete="username">
+        <input id="username" name="username"
+               required autocomplete="username">
 
         <label for="password">Password</label>
         <input id="password" name="password" type="password"
@@ -256,7 +280,11 @@ def login():
 
         with get_db() as db:
             user_row = db.execute(
-                "SELECT id, username, password_hash FROM users WHERE username = ?",
+                """
+                SELECT id, username, password_hash
+                FROM users
+                WHERE username = ?
+                """,
                 (username,)
             ).fetchone()
 
@@ -272,7 +300,7 @@ def login():
     return render_template_string(LOGIN_HTML)
 
 
-#REGISTRATION
+# REGISTRATION
 
 REGISTER_HTML = """
 <!DOCTYPE html>
@@ -336,7 +364,10 @@ def register():
         try:
             with get_db() as db:
                 db.execute(
-                    "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                    """
+                    INSERT INTO users (username, password_hash)
+                    VALUES (?, ?)
+                    """,
                     (username, password_hash)
                 )
 
@@ -349,7 +380,7 @@ def register():
     return render_template_string(REGISTER_HTML)
 
 
-#LOGOUT 
+# LOGOUT
 
 @app.route("/logout")
 @login_required
@@ -359,7 +390,7 @@ def logout():
     return redirect(url_for("login"))
 
 
-#CHARACTER CREATOR
+# CHARACTER CREATOR
 
 CREATOR_HTML = """
 <!DOCTYPE html>
@@ -375,7 +406,10 @@ CREATOR_HTML = """
     <div class="top-links">
         Logged in as <strong>{{ current_user.username }}</strong>
         <br>
+
         <a href="{{ url_for('my_characters') }}">My Characters</a>
+        |
+        <a href="{{ url_for('dice_roller') }}">Dice Roller</a>
         |
         <a href="{{ url_for('logout') }}">Logout</a>
     </div>
@@ -445,7 +479,9 @@ CREATOR_HTML = """
             <option>Chaotic Evil</option>
         </select>
 
-        <button type="submit" style="width:100%;">Create Character</button>
+        <button type="submit" style="width:100%;">
+            Create Character
+        </button>
     </form>
 </div>
 </body>
@@ -459,7 +495,7 @@ def character_creator():
     return render_template_string(CREATOR_HTML)
 
 
-#SAVE AND DISPLAY CHARACTER
+# SAVE AND DISPLAY CHARACTER
 
 CHARACTER_SHEET_HTML = """
 <!DOCTYPE html>
@@ -483,9 +519,17 @@ CHARACTER_SHEET_HTML = """
     </div>
 
     <div class="links">
-        <a class="button" href="{{ url_for('character_creator') }}">Create Another</a>
-        <a class="button" href="{{ url_for('my_characters') }}">My Characters</a>
-        <a class="button" href="{{ url_for('logout') }}">Logout</a>
+        <a class="button"
+           href="{{ url_for('character_creator') }}">Create Another</a>
+
+        <a class="button"
+           href="{{ url_for('my_characters') }}">My Characters</a>
+
+        <a class="button"
+           href="{{ url_for('dice_roller') }}">Dice Roller</a>
+
+        <a class="button"
+           href="{{ url_for('logout') }}">Logout</a>
     </div>
 </div>
 </body>
@@ -536,7 +580,10 @@ def send_stats():
         character_id = cursor.lastrowid
 
         character = db.execute(
-            "SELECT * FROM characters WHERE id = ? AND user_id = ?",
+            """
+            SELECT * FROM characters
+            WHERE id = ? AND user_id = ?
+            """,
             (character_id, int(current_user.id))
         ).fetchone()
 
@@ -546,7 +593,219 @@ def send_stats():
     )
 
 
-#MY CHARACTERS
+# DICE ROLLER HTML
+
+DICE_ROLLER_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Character Forge - Dice Roller</title>
+    """ + STYLE + """
+</head>
+<body>
+<div class="container">
+    <h1>Character Forge</h1>
+    <h2>Dice Roller</h2>
+
+    <div class="top-links">
+        <a href="{{ url_for('character_creator') }}">Character Creator</a>
+        |
+        <a href="{{ url_for('my_characters') }}">My Characters</a>
+        |
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% for message in messages %}
+        <div class="message">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('dice_roller') }}">
+
+        <label for="dice_type">Select Dice Type</label>
+        <select id="dice_type" name="dice_type" required>
+            <option value="d4">D4</option>
+            <option value="d6">D6</option>
+            <option value="d8">D8</option>
+            <option value="d10">D10</option>
+            <option value="d12">D12</option>
+            <option value="d20" selected>D20</option>
+            <option value="d100">D100</option>
+        </select>
+
+        <label for="number">Number of Dice</label>
+        <input
+            id="number"
+            name="number"
+            type="number"
+            min="1"
+            max="100"
+            value="1"
+            required
+        >
+
+        <label for="modifier">Modifier</label>
+        <input
+            id="modifier"
+            name="modifier"
+            type="number"
+            value="0"
+            required
+        >
+
+        <label for="roll_type">Roll Type</label>
+        <select id="roll_type" name="roll_type" required>
+            <option value="normal">Normal Roll</option>
+            <option value="advantage">Advantage (D20)</option>
+            <option value="disadvantage">Disadvantage (D20)</option>
+        </select>
+
+        <button type="submit" style="width:100%;">
+            Roll Dice
+        </button>
+    </form>
+
+    {% if result %}
+        <div class="character">
+            <h2>Roll Results</h2>
+
+            <p>
+                <strong>Dice:</strong>
+                {{ result["dice_type"] }}
+            </p>
+
+            <p>
+                <strong>Individual Rolls:</strong>
+                {{ result["rolls"] }}
+            </p>
+
+            <p>
+                <strong>Modifier:</strong>
+                {{ result["modifier"] }}
+            </p>
+
+            <h2>Total: {{ result["total"] }}</h2>
+        </div>
+    {% endif %}
+
+</div>
+</body>
+</html>
+"""
+
+
+# DICE ROLLER ROUTE
+
+@app.route("/dice-roller", methods=["GET", "POST"])
+@login_required
+def dice_roller():
+    result = None
+
+    if request.method == "POST":
+
+        dice_type = request.form.get("dice_type", "d20")
+
+        try:
+            number = int(request.form.get("number", 1))
+            modifier = int(request.form.get("modifier", 0))
+
+        except ValueError:
+            flash("Please enter valid numbers.")
+            return render_template_string(
+                DICE_ROLLER_HTML,
+                result=None
+            )
+
+        roll_type = request.form.get("roll_type", "normal")
+
+        if not 1 <= number <= 100:
+            flash("Number of dice must be between 1 and 100.")
+            return render_template_string(
+                DICE_ROLLER_HTML,
+                result=None
+            )
+
+        # These shortcuts connect the user's selection
+        # to the appropriate dice function in dice_roll.py.
+
+        dice_options = {
+            "d4": d4,
+            "d6": d6,
+            "d8": d8,
+            "d10": d10,
+            "d12": d12,
+            "d20": d20,
+            "d100": d100
+        }
+
+        if dice_type not in dice_options:
+            flash("Invalid dice selection.")
+            return render_template_string(
+                DICE_ROLLER_HTML,
+                result=None
+            )
+
+        dice_function = dice_options[dice_type]
+
+        if roll_type == "normal":
+
+            roll_result = roll_with_modifier(
+                number,
+                dice_function,
+                modifier
+            )
+
+            rolls = roll_result["rolls"]
+            total = roll_result["total"]
+
+        elif roll_type == "advantage":
+
+            if dice_type != "d20" or number != 1:
+                flash("Advantage requires one D20.")
+                return render_template_string(
+                    DICE_ROLLER_HTML,
+                    result=None
+                )
+
+            roll = advantage()
+            rolls = [roll]
+            total = roll + modifier
+
+        elif roll_type == "disadvantage":
+
+            if dice_type != "d20" or number != 1:
+                flash("Disadvantage requires one D20.")
+                return render_template_string(
+                    DICE_ROLLER_HTML,
+                    result=None
+                )
+
+            roll = disadvantage()
+            rolls = [roll]
+            total = roll + modifier
+
+        else:
+            flash("Invalid roll type.")
+            return render_template_string(
+                DICE_ROLLER_HTML,
+                result=None
+            )
+
+        result = {
+            "dice_type": dice_type.upper(),
+            "rolls": rolls,
+            "modifier": modifier,
+            "total": total
+        }
+
+    return render_template_string(
+        DICE_ROLLER_HTML,
+        result=result
+    )
+
+
+# MY CHARACTERS
 
 MY_CHARACTERS_HTML = """
 <!DOCTYPE html>
@@ -562,6 +821,8 @@ MY_CHARACTERS_HTML = """
 
     <div class="top-links">
         <a href="{{ url_for('character_creator') }}">Create Character</a>
+        |
+        <a href="{{ url_for('dice_roller') }}">Dice Roller</a>
         |
         <a href="{{ url_for('logout') }}">Logout</a>
     </div>
@@ -591,7 +852,11 @@ MY_CHARACTERS_HTML = """
 def my_characters():
     with get_db() as db:
         characters = db.execute(
-            "SELECT * FROM characters WHERE user_id = ? ORDER BY id DESC",
+            """
+            SELECT * FROM characters
+            WHERE user_id = ?
+            ORDER BY id DESC
+            """,
             (int(current_user.id),)
         ).fetchall()
 
@@ -600,14 +865,17 @@ def my_characters():
         characters=characters
     )
 
-@app.route("/docs", methods=['GET'])
+
+# DOCUMENTATION
+
+@app.route("/docs", methods=["GET"])
 def docs():
     return """
     <!DOCTYPE html>
     <html>
     <head>
         <title>D&D Stat Holder Documentation</title>
-    <head>
+    </head>
 
     <body>
         <h1>D&D Stat Holder</h1>
@@ -624,21 +892,56 @@ def docs():
                 <td>/</td>
                 <td>GET</td>
                 <td>Nothing</td>
-                <td>status code 200,Character creation page</td>
+                <td>Status code 200, Login page</td>
             </tr>
 
             <tr>
-                <td>/character</td>
+                <td>/character-creator</td>
                 <td>GET</td>
-                <td>
-                    Character name,<br>
-                    player name,<br>
-                    class,<br>
-                    level,<br>
-                    alignment,<br>
-                    race
-                </td>
-                <td>,status code 200,Completed character stat sheet</td>
+                <td>Logged-in user</td>
+                <td>Character creation page</td>
+            </tr>
+
+            <tr>
+                <td>/send_stats</td>
+                <td>POST</td>
+                <td>Character information</td>
+                <td>Completed character stat sheet</td>
+            </tr>
+
+            <tr>
+                <td>/my-characters</td>
+                <td>GET</td>
+                <td>Logged-in user</td>
+                <td>Saved characters</td>
+            </tr>
+
+            <tr>
+                <td>/dice-roller</td>
+                <td>GET, POST</td>
+                <td>Dice type, number, modifier, roll type</td>
+                <td>Dice roll results</td>
+            </tr>
+
+            <tr>
+                <td>/register</td>
+                <td>GET, POST</td>
+                <td>Username and password</td>
+                <td>Account registration</td>
+            </tr>
+
+            <tr>
+                <td>/login</td>
+                <td>GET, POST</td>
+                <td>Username and password</td>
+                <td>User login</td>
+            </tr>
+
+            <tr>
+                <td>/logout</td>
+                <td>GET</td>
+                <td>Logged-in user</td>
+                <td>Logs the user out</td>
             </tr>
         </table>
     </body>
@@ -646,7 +949,7 @@ def docs():
     """
 
 
-#MAIN
+# MAIN
 
 if __name__ == "__main__":
     app.run(debug=True)
