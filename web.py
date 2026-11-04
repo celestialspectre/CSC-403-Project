@@ -1,955 +1,583 @@
+
+# flask setup instructions: https://flask.palletsprojects.com/en/stable/installation/#install-flask
+
+
+from flask import *
+import sqlite3 #later for database integration (if we go with that instead of csv files)
+import hashlib #for hashing the user password
 import os
-import sqlite3
+import json
+import random
 import dice_roll
-
-from flask import (
-    Flask,
-    request,
-    redirect,
-    url_for,
-    render_template_string,
-    flash,
-)
-
-from flask_login import (
-    LoginManager,
-    UserMixin,
-    login_user,
-    logout_user,
-    login_required,
-    current_user,
-)
-
 from werkzeug.security import generate_password_hash, check_password_hash
+from database.database import connect_db, create_database, create_sheet_tables, add_excel_sheet_fields
 
-from dice_roll import (
-    roll_dice,
-    d4,
-    d6,
-    d8,
-    d10,
-    d12,
-    d20,
-    d100,
-    advantage,
-    disadvantage,
-    multiple_dice,
-    roll_with_modifier
-)
+app = Flask(__name__) 
+
+# temp session verification
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(32))
+
+# temp stuff for character sheet
+create_database()
+create_sheet_tables()
+add_excel_sheet_fields()
 
 
-app = Flask(__name__)
+def setup_user_passwords():
+    with connect_db() as conn:
+        columns = [
+            column[1]
+            for column in conn.execute('PRAGMA table_info(users)').fetchall()
+        ]
 
-# Use an environment variable for your secret key in production.
-app.config["SECRET_KEY"] = os.environ.get(
-    "SECRET_KEY", "change-this-secret-key-for-local-development"
-)
-
-# Database file will be created in the same folder as web.py.
-DATABASE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "characters.db"
-)
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "login"
+        if 'password_hash' not in columns:
+            conn.execute('ALTER TABLE users ADD COLUMN password_hash TEXT')
 
 
-# DATABASE
-
-def get_db():
-    connection = sqlite3.connect(DATABASE)
-    connection.row_factory = sqlite3.Row
-    return connection
+setup_user_passwords()
+# format: @app.route('websitename.xxx/[THIS RIGHT HERE]', methods=['GET'])
 
 
-def initialize_database():
-    with get_db() as db:
-        db.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL
-            )
-        """)
+ABILITIES = ('strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma')
+SKILLS = {
+    'Acrobatics': 'dexterity', 
+    'Animal Handling': 'wisdom', 
+    'Arcana': 'intelligence',
+    'Athletics': 'strength', 
+    'Deception': 'charisma', 
+    'History': 'intelligence',
+    'Insight': 'wisdom', 
+    'Intimidation': 'charisma', 
+    'Investigation': 'intelligence',
+    'Medicine': 'wisdom', 
+    'Nature': 'intelligence', 
+    'Perception': 'wisdom',
+    'Performance': 'charisma', 
+    'Persuasion': 'charisma', 
+    'Religion': 'intelligence',
+    'Sleight of Hand': 'dexterity', 
+    'Stealth': 'dexterity', 
+    'Survival': 'wisdom'
+}
 
-        db.execute("""
-            CREATE TABLE IF NOT EXISTS characters (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                character_name TEXT NOT NULL,
-                player_name TEXT NOT NULL,
-                character_class TEXT NOT NULL,
-                character_level INTEGER NOT NULL,
-                character_race TEXT NOT NULL,
-                character_alignment TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            )
-        """)
+# character sheet references
+SHEET_SECTIONS = {
+    'Identity & Appearance': [('gender', 'Gender'), 
+    ('deity', 'Deity'), ('background', 'Background'), ('size', 'Size'), ('age', 'Age'), ('height', 'Height'), ('weight', 'Weight'), ('hair', 'Hair'), ('eyes', 'Eyes'), ('portrait_url', 'Portrait URL / reference')], 
+    'Classes & Advancement': [('experience_points', 'Experience Points'), ('class_levels', 'Additional classes / levels'), ('hit_dice', 'Hit Dice (e.g. 3d12)'), ('proficiency_override', 'Proficiency Bonus Override (optional)')], 
+    'Combat & Movement': [('initiative_bonus', 'Initiative Bonus'), ('speed', 'Walking Speed'), ('other_movement', 'Other Movement Modes'), ('temp_hp', 'Temporary HP'), ('death_successes', 'Death Save Successes (0-3)'), ('death_failures', 'Death Save Failures (0-3)'), ('armor_worn', 'Armor Worn'), ('shield', 'Shield'), ('armor_notes', 'Armor / AC Breakdown'), ('ammunition', 'Ammunition'), ('weapons_spells', 'Weapons & Spells / Attack Details'), ('special_attacks', 'Special Attacks'), ('special_defenses', 'Special Defenses')], 
+    'Features & Spellcasting': [('racial_background_features', 'Race / Background / Feats'), ('class_features', 'Class Features'), ('additional_class_info', 'Additional Class Information'), ('spellcasting_ability', 'Spellcasting Ability'), ('spell_save_dc', 'Spell Save DC'), ('spell_attack_bonus', 'Spell Attack Bonus'), ('known_spells', 'Known / Prepared Spells'), ('magic_items', 'Magic Items')], 
+    'Equipment & Wealth': [('copper', 'Copper Pieces (CP)'), ('silver', 'Silver Pieces (SP)'), ('electrum', 'Electrum Pieces (EP)'), ('platinum', 'Platinum Pieces (PP)'), ('gems', 'Gems'), ('valuables', 'Jewelry / Valuables'), ('consumables', 'Consumables'), ('equipment_locations', 'Equipment Locations / Containers'), ('equipment_weight', 'Equipment Weight Notes'), ('encumbrance', 'Encumbrance / Carrying Capacity'), ('misc_possessions', 'Miscellaneous Possessions')], 
+    'Biography & Relationships': [('character_bio', 'Character Biography'), ('allies_organizations', 'Allies & Organizations'), ('storytelling', 'Storytelling / Background Notes'), ('misc_info', 'Miscellaneous Information')]
+}
+
+# character sheet keys
+SHEET_KEYS = [
+    'gender', 'deity', 'background', 'size', 'age', 'height', 'weight',
+    'hair', 'eyes', 'portrait_url', 'experience_points', 'class_levels',
+    'hit_dice', 'proficiency_override', 'initiative_bonus', 'speed',
+    'other_movement', 'temp_hp', 'death_successes', 'death_failures',
+    'armor_worn', 'shield', 'armor_notes', 'ammunition', 'weapons_spells',
+    'special_attacks', 'special_defenses', 'racial_background_features',
+    'class_features', 'additional_class_info', 'spellcasting_ability',
+    'spell_save_dc', 'spell_attack_bonus', 'known_spells', 'magic_items',
+    'copper', 'silver', 'electrum', 'platinum', 'gems', 'valuables',
+    'consumables', 'equipment_locations', 'equipment_weight', 'encumbrance',
+    'misc_possessions', 'character_bio', 'allies_organizations',
+    'storytelling', 'misc_info'
+]
+
+# numerical values of character sheet stuff
+SHEET_NUMERIC = {
+    'experience_points', 'death_successes', 'death_failures', 'copper',
+    'silver', 'electrum', 'platinum', 'temp_hp', 'age', 'speed',
+    'initiative_bonus', 'spell_save_dc', 'spell_attack_bonus'
+}
 
 
-initialize_database()
+def integer_field(form, key, minimum, maximum, default=None):
+    raw = form.get(key, '')
+    if raw == '' and default is not None:
+        return default
+    try:
+        number = int(raw)
+    except (ValueError, TypeError):
+        abort(400, description='Invalid input: ' + key)
+    if not minimum <= number <= maximum:
+        abort(400, description='Invalid input: ' + key)
+    return number
 
 
-# USER LOGIN
+def text_field(form, key, limit=2000, required=False):
+    value = form.get(key, '').strip()
+    if len(value) > limit or (required and not value):
+        abort(400, description='Invalid input: ' + key)
+    return value
 
-class User(UserMixin):
-    def __init__(self, user_id, username):
-        self.id = str(user_id)
-        self.username = username
+
+# temp user id
+def current_user_id():
+    username = session.get('username')
+    if not username:
+        abort(401, description='Please log in first.')
+    with connect_db() as conn:
+        row = conn.execute('SELECT user_id FROM users WHERE username=?', (username,)).fetchone()
+    if row is None:
+        abort(401)
+    return row[0]
 
 
-@login_manager.user_loader
-def load_user(user_id):
-    with get_db() as db:
-        row = db.execute(
-            "SELECT id, username FROM users WHERE id = ?",
-            (user_id,)
-        ).fetchone()
+def owned_character(conn, character_id, user_id):
+    conn.row_factory = sqlite3.Row
+    row = conn.execute('SELECT * FROM characters WHERE character_id=? AND user_id=?',
+                       (character_id, user_id)).fetchone()
+    if row is None:
+        abort(404, description='Character not found.')
+    return row
 
+
+def personal_party_id(conn, user_id):
+    # temp party_id functionality
+    row = conn.execute('SELECT party_id FROM parties WHERE dm_user_id=? AND party_name=?',
+                       (user_id, 'Personal Characters')).fetchone()
     if row:
-        return User(row["id"], row["username"])
-
-    return None
-
-
-# HTML
-
-STYLE = """
-<style>
-    * {
-        box-sizing: border-box;
-    }
-
-    body {
-        margin: 0;
-        padding: 30px 15px;
-        background: #101010;
-        color: #f5f5f5;
-        font-family: Arial, sans-serif;
-    }
-
-    .container {
-        max-width: 650px;
-        margin: 25px auto;
-        padding: 30px;
-        background: #1c1c1c;
-        border: 1px solid #c9a227;
-        border-radius: 12px;
-        box-shadow: 0 0 15px rgba(201, 162, 39, 0.12);
-    }
-
-    h1, h2 {
-        color: #d4af37;
-        text-align: center;
-    }
-
-    p {
-        line-height: 1.5;
-    }
-
-    label {
-        display: block;
-        margin-top: 15px;
-        margin-bottom: 6px;
-        color: #e4c767;
-    }
-
-    input, select {
-        width: 100%;
-        padding: 11px;
-        border-radius: 5px;
-        border: 1px solid #555;
-        background: #292929;
-        color: white;
-    }
-
-    button, .button {
-        display: inline-block;
-        margin-top: 20px;
-        padding: 12px 18px;
-        border: none;
-        border-radius: 5px;
-        background: #c9a227;
-        color: #111;
-        font-weight: bold;
-        text-decoration: none;
-        cursor: pointer;
-    }
-
-    button:hover, .button:hover {
-        background: #e4c767;
-    }
-
-    .links {
-        text-align: center;
-        margin-top: 20px;
-    }
-
-    .links a, a {
-        color: #e4c767;
-    }
-
-    .message {
-        padding: 10px;
-        margin: 12px 0;
-        border: 1px solid #c9a227;
-        border-radius: 5px;
-        color: #f5d778;
-    }
-
-    .character {
-        padding: 15px;
-        margin-top: 15px;
-        border: 1px solid #555;
-        border-radius: 7px;
-        background: #252525;
-    }
-
-    .character h3 {
-        color: #d4af37;
-    }
-
-    .top-links {
-        text-align: center;
-        margin-bottom: 20px;
-    }
-
-    .top-links a {
-        margin: 0 8px;
-    }
-</style>
-"""
+        return row[0]
+    cursor = conn.execute('INSERT INTO parties (party_name, dm_user_id) VALUES (?, ?)',
+                          ('Personal Characters', user_id))
+    party_id = cursor.lastrowid
+    conn.execute('INSERT INTO party_members (party_id, user_id) VALUES (?, ?)',
+                 (party_id, user_id))
+    return party_id
 
 
-# LOGIN PAGE
+# endpoint; url will say '/' when index returns
+@app.route('/login', methods=['GET'])
 
-LOGIN_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Welcome to Dungeon & Dragons! - Login</title>
-    """ + STYLE + """
-</head>
-<body>
-<div class="container">
-    <h1>Welcome to Dungeon & Dragons!</h1>
-    <h2>Login</h2>
-    <p style="text-align:center;">
-        Sign in to create and manage your characters.
-    </p>
-
-    {% with messages = get_flashed_messages() %}
-      {% for message in messages %}
-        <div class="message">{{ message }}</div>
-      {% endfor %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('login') }}">
-        <label for="username">Username</label>
-        <input id="username" name="username"
-               required autocomplete="username">
-
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password"
-               required autocomplete="current-password">
-
-        <button type="submit" style="width:100%;">Login</button>
-    </form>
-
-    <div class="links">
-        <p>Don't have an account?</p>
-        <a href="{{ url_for('register') }}">Create an account</a>
-    </div>
-</div>
-</body>
-</html>
-"""
+## runs when page opens, starts off with the html file placed in
+## the templates folder. For now, this will be the login screen
+def index():
+    return render_template('login.html') # loads the login.html page
 
 
-@app.route("/")
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for("character_creator"))
-
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-
-        with get_db() as db:
-            user_row = db.execute(
-                """
-                SELECT id, username, password_hash
-                FROM users
-                WHERE username = ?
-                """,
-                (username,)
-            ).fetchone()
-
-        if user_row and check_password_hash(
-            user_row["password_hash"], password
-        ):
-            user = User(user_row["id"], user_row["username"])
-            login_user(user)
-            return redirect(url_for("character_creator"))
-
-        flash("Invalid username or password.")
-
-    return render_template_string(LOGIN_HTML)
-
-
-# REGISTRATION
-
-REGISTER_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Character Forge - Register</title>
-    """ + STYLE + """
-</head>
-<body>
-<div class="container">
-    <h1>Character Forge</h1>
-    <h2>Create Account</h2>
-
-    {% with messages = get_flashed_messages() %}
-      {% for message in messages %}
-        <div class="message">{{ message }}</div>
-      {% endfor %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('register') }}">
-        <label for="username">Username</label>
-        <input id="username" name="username" required minlength="3"
-               maxlength="40" autocomplete="username">
-
-        <label for="password">Password (at least 8 characters)</label>
-        <input id="password" name="password" type="password"
-               required minlength="8" autocomplete="new-password">
-
-        <button type="submit" style="width:100%;">Register</button>
-    </form>
-
-    <div class="links">
-        <p>Already have an account?</p>
-        <a href="{{ url_for('login') }}">Return to login</a>
-    </div>
-</div>
-</body>
-</html>
-"""
-
-
-@app.route("/register", methods=["GET", "POST"])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated:
-        return redirect(url_for("character_creator"))
 
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+    if request.method == 'GET':
+        return render_template('register.html')
 
-        if len(username) < 3 or len(username) > 40:
-            flash("Username must be between 3 and 40 characters.")
-            return render_template_string(REGISTER_HTML)
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '')
+    confirm_password = request.form.get('confirm_password', '')
 
-        if len(password) < 8:
-            flash("Password must be at least 8 characters.")
-            return render_template_string(REGISTER_HTML)
+    if len(username) < 3 or len(username) > 40:
+        return render_template('register.html', error='Username must be between 3 and 40 characters.')
+
+    if len(password) < 8:
+        return render_template('register.html', error='Password must be at least 8 characters.')
+
+    if password != confirm_password:
+        return render_template('register.html', error='Passwords do not match.')
+
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            'SELECT user_id FROM users WHERE username=?',
+            (username,)
+        )
+
+        if cursor.fetchone():
+            return render_template('register.html', error='Username already exists.')
 
         password_hash = generate_password_hash(password)
 
-        try:
-            with get_db() as db:
-                db.execute(
-                    """
-                    INSERT INTO users (username, password_hash)
-                    VALUES (?, ?)
-                    """,
-                    (username, password_hash)
-                )
+        cursor.execute(
+            'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+            (username, password_hash)
+        )
 
-            flash("Account created successfully. You can now log in.")
-            return redirect(url_for("login"))
+        conn.commit()
 
-        except sqlite3.IntegrityError:
-            flash("That username is already taken.")
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return render_template('register.html', error='Username already exists.')
 
-    return render_template_string(REGISTER_HTML)
+    finally:
+        conn.close()
 
+    return redirect(url_for('index'))
 
-# LOGOUT
 
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    flash("You have been logged out.")
-    return redirect(url_for("login"))
+@app.route('/main', methods=['GET', 'POST'])
+def main_menu():
 
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
 
-# CHARACTER CREATOR
+        with connect_db() as conn:
+            user = conn.execute(
+                'SELECT username, password_hash FROM users WHERE username=?',
+                (username,)
+            ).fetchone()
 
-CREATOR_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Character Forge - Create Character</title>
-    """ + STYLE + """
-</head>
-<body>
-<div class="container">
-    <h1>Character Forge</h1>
+        if not user or not user[1] or not check_password_hash(user[1], password):
+            return render_template('login.html', error='Incorrect username or password.')
 
-    <div class="top-links">
-        Logged in as <strong>{{ current_user.username }}</strong>
-        <br>
+        session.clear()
+        session['username'] = user[0]
 
-        <a href="{{ url_for('my_characters') }}">My Characters</a>
-        |
-        <a href="{{ url_for('dice_roller') }}">Dice Roller</a>
-        |
-        <a href="{{ url_for('logout') }}">Logout</a>
-    </div>
+    elif 'username' not in session:
+        return redirect(url_for('index'))
 
-    <h2>Create Your Character</h2>
+    user_id = current_user_id()
 
-    {% with messages = get_flashed_messages() %}
-      {% for message in messages %}
-        <div class="message">{{ message }}</div>
-      {% endfor %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('send_stats') }}">
-        <label for="nameField">Character Name</label>
-        <input id="nameField" name="nameField" required maxlength="80">
-
-        <label for="pNameField">Player Name</label>
-        <input id="pNameField" name="pNameField" required maxlength="80"
-               value="{{ current_user.username }}">
-
-        <label for="classField">Class</label>
-        <select id="classField" name="classField" required>
-            <option value="">Select a class</option>
-            <option>Barbarian</option>
-            <option>Bard</option>
-            <option>Cleric</option>
-            <option>Druid</option>
-            <option>Fighter</option>
-            <option>Monk</option>
-            <option>Paladin</option>
-            <option>Ranger</option>
-            <option>Rogue</option>
-            <option>Sorcerer</option>
-            <option>Warlock</option>
-            <option>Wizard</option>
-        </select>
-
-        <label for="lvlField">Level (1-20)</label>
-        <input id="lvlField" name="lvlField" type="number"
-               min="1" max="20" value="1" required>
-
-        <label for="raceField">Race</label>
-        <select id="raceField" name="raceField" required>
-            <option value="">Select a race</option>
-            <option>Dragonborn</option>
-            <option>Dwarf</option>
-            <option>Elf</option>
-            <option>Gnome</option>
-            <option>Half-Elf</option>
-            <option>Half-Orc</option>
-            <option>Halfling</option>
-            <option>Human</option>
-            <option>Tiefling</option>
-        </select>
-
-        <label for="alignField">Alignment</label>
-        <select id="alignField" name="alignField" required>
-            <option value="">Select an alignment</option>
-            <option>Lawful Good</option>
-            <option>Neutral Good</option>
-            <option>Chaotic Good</option>
-            <option>Lawful Neutral</option>
-            <option>True Neutral</option>
-            <option>Chaotic Neutral</option>
-            <option>Lawful Evil</option>
-            <option>Neutral Evil</option>
-            <option>Chaotic Evil</option>
-        </select>
-
-        <button type="submit" style="width:100%;">
-            Create Character
-        </button>
-    </form>
-</div>
-</body>
-</html>
-"""
-
-
-@app.route("/character-creator")
-@login_required
-def character_creator():
-    return render_template_string(CREATOR_HTML)
-
-
-# SAVE AND DISPLAY CHARACTER
-
-CHARACTER_SHEET_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Character Forge - Character Sheet</title>
-    """ + STYLE + """
-</head>
-<body>
-<div class="container">
-    <h1>Character Forge</h1>
-    <h2>Character Sheet</h2>
-
-    <div class="character">
-        <h3>{{ character["character_name"] }}</h3>
-        <p><strong>Player:</strong> {{ character["player_name"] }}</p>
-        <p><strong>Class:</strong> {{ character["character_class"] }}</p>
-        <p><strong>Level:</strong> {{ character["character_level"] }}</p>
-        <p><strong>Race:</strong> {{ character["character_race"] }}</p>
-        <p><strong>Alignment:</strong> {{ character["character_alignment"] }}</p>
-    </div>
-
-    <div class="links">
-        <a class="button"
-           href="{{ url_for('character_creator') }}">Create Another</a>
-
-        <a class="button"
-           href="{{ url_for('my_characters') }}">My Characters</a>
-
-        <a class="button"
-           href="{{ url_for('dice_roller') }}">Dice Roller</a>
-
-        <a class="button"
-           href="{{ url_for('logout') }}">Logout</a>
-    </div>
-</div>
-</body>
-</html>
-"""
-
-
-@app.route("/send_stats", methods=["POST"])
-@login_required
-def send_stats():
-    character_name = request.form.get("nameField", "").strip()
-    player_name = request.form.get("pNameField", "").strip()
-    character_class = request.form.get("classField", "").strip()
-    race = request.form.get("raceField", "").strip()
-    alignment = request.form.get("alignField", "").strip()
-
-    try:
-        level = int(request.form.get("lvlField", "1"))
-    except ValueError:
-        flash("Level must be a number.")
-        return redirect(url_for("character_creator"))
-
-    if not character_name or not player_name:
-        flash("Please enter both the character name and player name.")
-        return redirect(url_for("character_creator"))
-
-    if not 1 <= level <= 20:
-        flash("Character level must be between 1 and 20.")
-        return redirect(url_for("character_creator"))
-
-    with get_db() as db:
-        cursor = db.execute("""
-            INSERT INTO characters (
-                user_id, character_name, player_name, character_class,
-                character_level, character_race, character_alignment
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            int(current_user.id),
-            character_name,
-            player_name,
-            character_class,
-            level,
-            race,
-            alignment
-        ))
-
-        character_id = cursor.lastrowid
-
-        character = db.execute(
-            """
-            SELECT * FROM characters
-            WHERE id = ? AND user_id = ?
-            """,
-            (character_id, int(current_user.id))
-        ).fetchone()
-
-    return render_template_string(
-        CHARACTER_SHEET_HTML,
-        character=character
-    )
-
-
-# DICE ROLLER HTML
-
-DICE_ROLLER_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Character Forge - Dice Roller</title>
-    """ + STYLE + """
-</head>
-<body>
-<div class="container">
-    <h1>Character Forge</h1>
-    <h2>Dice Roller</h2>
-
-    <div class="top-links">
-        <a href="{{ url_for('character_creator') }}">Character Creator</a>
-        |
-        <a href="{{ url_for('my_characters') }}">My Characters</a>
-        |
-        <a href="{{ url_for('logout') }}">Logout</a>
-    </div>
-
-    {% with messages = get_flashed_messages() %}
-      {% for message in messages %}
-        <div class="message">{{ message }}</div>
-      {% endfor %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('dice_roller') }}">
-
-        <label for="dice_type">Select Dice Type</label>
-        <select id="dice_type" name="dice_type" required>
-            <option value="d4">D4</option>
-            <option value="d6">D6</option>
-            <option value="d8">D8</option>
-            <option value="d10">D10</option>
-            <option value="d12">D12</option>
-            <option value="d20" selected>D20</option>
-            <option value="d100">D100</option>
-        </select>
-
-        <label for="number">Number of Dice</label>
-        <input
-            id="number"
-            name="number"
-            type="number"
-            min="1"
-            max="100"
-            value="1"
-            required
-        >
-
-        <label for="modifier">Modifier</label>
-        <input
-            id="modifier"
-            name="modifier"
-            type="number"
-            value="0"
-            required
-        >
-
-        <label for="roll_type">Roll Type</label>
-        <select id="roll_type" name="roll_type" required>
-            <option value="normal">Normal Roll</option>
-            <option value="advantage">Advantage (D20)</option>
-            <option value="disadvantage">Disadvantage (D20)</option>
-        </select>
-
-        <button type="submit" style="width:100%;">
-            Roll Dice
-        </button>
-    </form>
-
-    {% if result %}
-        <div class="character">
-            <h2>Roll Results</h2>
-
-            <p>
-                <strong>Dice:</strong>
-                {{ result["dice_type"] }}
-            </p>
-
-            <p>
-                <strong>Individual Rolls:</strong>
-                {{ result["rolls"] }}
-            </p>
-
-            <p>
-                <strong>Modifier:</strong>
-                {{ result["modifier"] }}
-            </p>
-
-            <h2>Total: {{ result["total"] }}</h2>
-        </div>
-    {% endif %}
-
-</div>
-</body>
-</html>
-"""
-
-
-# DICE ROLLER ROUTE
-
-@app.route("/dice-roller", methods=["GET", "POST"])
-@login_required
-def dice_roller():
-    result = None
-
-    if request.method == "POST":
-
-        dice_type = request.form.get("dice_type", "d20")
-
-        try:
-            number = int(request.form.get("number", 1))
-            modifier = int(request.form.get("modifier", 0))
-
-        except ValueError:
-            flash("Please enter valid numbers.")
-            return render_template_string(
-                DICE_ROLLER_HTML,
-                result=None
-            )
-
-        roll_type = request.form.get("roll_type", "normal")
-
-        if not 1 <= number <= 100:
-            flash("Number of dice must be between 1 and 100.")
-            return render_template_string(
-                DICE_ROLLER_HTML,
-                result=None
-            )
-
-        # These shortcuts connect the user's selection
-        # to the appropriate dice function in dice_roll.py.
-
-        dice_options = {
-            "d4": d4,
-            "d6": d6,
-            "d8": d8,
-            "d10": d10,
-            "d12": d12,
-            "d20": d20,
-            "d100": d100
-        }
-
-        if dice_type not in dice_options:
-            flash("Invalid dice selection.")
-            return render_template_string(
-                DICE_ROLLER_HTML,
-                result=None
-            )
-
-        dice_function = dice_options[dice_type]
-
-        if roll_type == "normal":
-
-            roll_result = roll_with_modifier(
-                number,
-                dice_function,
-                modifier
-            )
-
-            rolls = roll_result["rolls"]
-            total = roll_result["total"]
-
-        elif roll_type == "advantage":
-
-            if dice_type != "d20" or number != 1:
-                flash("Advantage requires one D20.")
-                return render_template_string(
-                    DICE_ROLLER_HTML,
-                    result=None
-                )
-
-            roll = advantage()
-            rolls = [roll]
-            total = roll + modifier
-
-        elif roll_type == "disadvantage":
-
-            if dice_type != "d20" or number != 1:
-                flash("Disadvantage requires one D20.")
-                return render_template_string(
-                    DICE_ROLLER_HTML,
-                    result=None
-                )
-
-            roll = disadvantage()
-            rolls = [roll]
-            total = roll + modifier
-
-        else:
-            flash("Invalid roll type.")
-            return render_template_string(
-                DICE_ROLLER_HTML,
-                result=None
-            )
-
-        result = {
-            "dice_type": dice_type.upper(),
-            "rolls": rolls,
-            "modifier": modifier,
-            "total": total
-        }
-
-    return render_template_string(
-        DICE_ROLLER_HTML,
-        result=result
-    )
-
-
-# MY CHARACTERS
-
-MY_CHARACTERS_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Character Forge - My Characters</title>
-    """ + STYLE + """
-</head>
-<body>
-<div class="container">
-    <h1>Character Forge</h1>
-    <h2>My Characters</h2>
-
-    <div class="top-links">
-        <a href="{{ url_for('character_creator') }}">Create Character</a>
-        |
-        <a href="{{ url_for('dice_roller') }}">Dice Roller</a>
-        |
-        <a href="{{ url_for('logout') }}">Logout</a>
-    </div>
-
-    {% if characters %}
-        {% for character in characters %}
-            <div class="character">
-                <h3>{{ character["character_name"] }}</h3>
-                <p><strong>Player:</strong> {{ character["player_name"] }}</p>
-                <p><strong>Class:</strong> {{ character["character_class"] }}</p>
-                <p><strong>Level:</strong> {{ character["character_level"] }}</p>
-                <p><strong>Race:</strong> {{ character["character_race"] }}</p>
-                <p><strong>Alignment:</strong> {{ character["character_alignment"] }}</p>
-            </div>
-        {% endfor %}
-    {% else %}
-        <p>You have not created any characters yet.</p>
-    {% endif %}
-</div>
-</body>
-</html>
-"""
-
-
-@app.route("/my-characters")
-@login_required
-def my_characters():
-    with get_db() as db:
-        characters = db.execute(
-            """
-            SELECT * FROM characters
-            WHERE user_id = ?
-            ORDER BY id DESC
-            """,
-            (int(current_user.id),)
+    with connect_db() as conn:
+        characters = conn.execute(
+            '''SELECT character_id, character_name, character_class, character_level
+               FROM characters
+               WHERE user_id=?
+               ORDER BY character_id DESC''',
+            (user_id,)
         ).fetchall()
 
-    return render_template_string(
-        MY_CHARACTERS_HTML,
-        characters=characters
-    )
+    return render_template('main.html', characters=characters)
 
 
-# DOCUMENTATION
+@app.route('/character-creator', methods=['GET'])
+def character_creator():
+    current_user_id()
+    return render_template('character-creator.html')
 
-@app.route("/docs", methods=["GET"])
-def docs():
+    # username = request.args.get("username", "")
+    # password = request.args.get("password", "")
+
+    # if len(username) < 0:
+    #     return jsonify({"error": "username is required"}), 400
+    # if len(password) < 0:
+    #     return jsonify({"error": "password is required"}), 400
+
+    # ===
+    # logic for comparing username + password hash to database goes here
+    # ===
+
+    '''
+    # temporary character saving stuff, once database is fully made this can be changed however we need
+    with sqlite3.connect('characters.db') as conn:
+        conn.execute('CREATE TABLE IF NOT EXISTS characters (id INTEGER PRIMARY KEY, name TEXT, player TEXT, class_name TEXT, level INTEGER, alignment TEXT, race TEXT)')
+        characters = conn.execute('SELECT id, name, class_name, level FROM characters ORDER BY id DESC').fetchall()
+        
+
     return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>D&D Stat Holder Documentation</title>
-    </head>
+        <head>
+            <title>DND Stat Input</title> <!--name of the tab-->
+            <link rel="stylesheet" href="../static/styles/skeleton.css" /> <!--connects the stylesheet (css) to the page-->
+        </head>
 
-    <body>
-        <h1>D&D Stat Holder</h1>
+        <body> 
+            <center>
+            <form action="/character" method="GET"> <!--sends the form data to the /character endpoint in web.py as a string-->
+                <label>Character Name: </label> <!--label for text box-->
+                <input required name="nameField"> <!--actual text box-->
+                <br /> <!--a line breal to separate elements better-->
+                
+                <label>Player Name: </label>
+                <input required name="pNameField">
+                <br />
+                
+                <label>Class: </label>
+                <input required name="classField">
+                <br />
+                
+                <label>Level: </label>
+                <input required name="lvlField" type="number" min="1" max="20" step="1">
+                <br />
+                
+                <label>Alignment: </label>
+                <input required name="alignField">
+                <br />
+                
+                <label>Race: </label>
+                <input required name="raceField">
+                <br />
+                <br />
 
-        <table border="1">
-            <tr>
-                <th>Endpoint</th>
-                <th>Method</th>
-                <th>Expects</th>
-                <th>Returns</th>
-            </tr>
+                <button>Submit</button> <!--submit button-->
+                <br />
+            </form>
+            </center>
 
-            <tr>
-                <td>/</td>
-                <td>GET</td>
-                <td>Nothing</td>
-                <td>Status code 200, Login page</td>
-            </tr>
-
-            <tr>
-                <td>/character-creator</td>
-                <td>GET</td>
-                <td>Logged-in user</td>
-                <td>Character creation page</td>
-            </tr>
-
-            <tr>
-                <td>/send_stats</td>
-                <td>POST</td>
-                <td>Character information</td>
-                <td>Completed character stat sheet</td>
-            </tr>
-
-            <tr>
-                <td>/my-characters</td>
-                <td>GET</td>
-                <td>Logged-in user</td>
-                <td>Saved characters</td>
-            </tr>
-
-            <tr>
-                <td>/dice-roller</td>
-                <td>GET, POST</td>
-                <td>Dice type, number, modifier, roll type</td>
-                <td>Dice roll results</td>
-            </tr>
-
-            <tr>
-                <td>/register</td>
-                <td>GET, POST</td>
-                <td>Username and password</td>
-                <td>Account registration</td>
-            </tr>
-
-            <tr>
-                <td>/login</td>
-                <td>GET, POST</td>
-                <td>Username and password</td>
-                <td>User login</td>
-            </tr>
-
-            <tr>
-                <td>/logout</td>
-                <td>GET</td>
-                <td>Logged-in user</td>
-                <td>Logs the user out</td>
-            </tr>
-        </table>
-    </body>
-    </html>
-    """
+            <!--new saved character section of site to list saved characters (what no way)
+            <section class="saved-characters">
+                <h2>Saved Characters</h2>
+                {% if characters %}
+                    {% for character in characters %}
+                        <p><a href="{{ url_for('saved_character', character_id=character[0]) }}">{{ character[1] }} — {{ character[2] }}, Level {{ character[3] }}</a></p>
+                    {% endfor %}
+                {% else %}
+                    <p>No characters saved yet.</p>
+                {% endif %}
+            </section>-->
+            """,200'''
 
 
-# MAIN
+@app.route('/characters/create', methods=['POST'])
+def create_character():
+    user_id = current_user_id()
+    name = text_field(request.form, 'nameField', 100, True)
+    player = text_field(request.form, 'pNameField', 100, True)
+    character_class = text_field(request.form, 'classField', 100, True)
+    level = integer_field(request.form, 'lvlField', 1, 20)
+    alignment = text_field(request.form, 'alignField', 100, True)
+    race = text_field(request.form, 'raceField', 100, True)
+    # player name remains a creator field 
+    with connect_db() as conn:
+        party_id = personal_party_id(conn, user_id)
+        cursor = conn.execute('''INSERT INTO characters
+            (user_id, party_id, character_name, character_class, character_level)
+            VALUES (?, ?, ?, ?, ?)''', (user_id, party_id, name, character_class, level))
+        character_id = cursor.lastrowid
+        conn.execute('''INSERT INTO character_details (character_id, alignment, race)
+                        VALUES (?, ?, ?)''', (character_id, alignment, race))
+    return redirect(url_for('character_sheet', character_id=character_id))
 
-if __name__ == "__main__":
+
+@app.route('/characters/<int:character_id>', methods=['GET'])
+def character_sheet(character_id):
+    user_id = current_user_id()
+    with connect_db() as conn:
+        conn.row_factory = sqlite3.Row
+        character = owned_character(conn, character_id, user_id)
+        details = conn.execute('SELECT * FROM character_details WHERE character_id=?', (character_id,)).fetchone()
+        items = conn.execute('SELECT * FROM character_items WHERE character_id=? ORDER BY item_id', (character_id,)).fetchall()
+        resources = conn.execute('SELECT * FROM character_resources WHERE character_id=? ORDER BY resource_id', (character_id,)).fetchall()
+    details = dict(details) if details else {}
+    try:
+        excel_values = json.loads(details.get('excel_fields', '{}'))
+        if not isinstance(excel_values, dict):
+            excel_values = {}
+    except (ValueError, TypeError):
+        excel_values = {}
+    prof_skills = json.loads(details.get('skill_proficiencies', '[]'))
+    prof_saves = json.loads(details.get('saving_throw_proficiencies', '[]'))
+    proficiency_bonus = 2 + (character['character_level'] - 1) // 4
+    modifiers = {a: (character[a] - 10) // 2 for a in ABILITIES}
+    return render_template(
+        'character-sheet.html', 
+        character=character, 
+        details=details,
+        items=items, 
+        resources=resources, 
+        abilities=ABILITIES, 
+        skills=SKILLS, 
+        prof_skills=prof_skills, 
+        prof_saves=prof_saves,
+        modifiers=modifiers, 
+        proficiency_bonus=proficiency_bonus,
+        sheet_sections=SHEET_SECTIONS, 
+        excel_values=excel_values,
+        excel_numeric=SHEET_NUMERIC,
+        passive_skills={
+            name: 10 + modifiers[SKILLS[name]] + (proficiency_bonus if name in prof_skills else 0) for name in ("Insight", "Investigation", "Perception")
+        })
+
+
+@app.route('/characters/<int:character_id>/save', methods=['POST'])
+def save_character(character_id):
+    user_id = current_user_id()
+    form = request.form
+    scores = {
+        a: integer_field(form, a, 1, 30) for a in ABILITIES
+    }
+    hp = integer_field(form, 'hit_points', 0, 9999)
+    max_hp = integer_field(form, 'max_hit_points', 1, 9999)
+    ac = integer_field(form, 'armor_class', 0, 100)
+    gold = integer_field(form, 'gold', 0, 1000000000)
+    skill_profs = form.getlist('skill_proficiencies')
+    save_profs = form.getlist('saving_throw_proficiencies')
+    if any(skill not in SKILLS for skill in skill_profs) or any(a not in ABILITIES for a in save_profs):
+        abort(400, description='Invalid proficiency selection')
+    fields = ('alignment', 'race', 'languages', 'ideals', 'bonds', 'flaws', 'personality', 'other_notes', 'other_proficiencies')
+    text_values = {
+        key: text_field(form, key) for key in fields
+    }
+    item_names = form.getlist('item_name')
+    item_quantities = form.getlist('item_quantity')
+    item_notes = form.getlist('item_notes')
+    resource_names = form.getlist('resource_name')
+    resource_current = form.getlist('resource_current')
+    resource_max = form.getlist('resource_max')
+    if len(item_names) != len(item_quantities) or len(item_names) != len(item_notes):
+        abort(400, description='Invalid inventory rows')
+    if len(resource_names) != len(resource_current) or len(resource_names) != len(resource_max):
+        abort(400, description='Invalid resource rows')
+    if len(item_names) > 100 or len(resource_names) > 100:
+        abort(400, description='Too many rows')
+    items = []
+    for name, quantity, note in zip(item_names, item_quantities, item_notes):
+        name, note = name.strip(), note.strip()
+        if len(name) > 100 or len(note) > 500:
+            abort(400, description='Invalid inventory text')
+        if name:
+            items.append((name, integer_field({'q': quantity}, 'q', 0, 99999), note))
+    resources = []
+    for name, current, maximum in zip(resource_names, resource_current, resource_max):
+        name = name.strip()
+        if len(name) > 100:
+            abort(400, description='Invalid resource name')
+        if name:
+            cur = integer_field({'v': current}, 'v', 0, 99999)
+            mx = integer_field({'v': maximum}, 'v', 0, 99999)
+            if cur > mx:
+                abort(400, description='Resource current value exceeds maximum')
+            resources.append((name, cur, mx))
+    # validate excel-reference entries before saving
+    excel_values = {}
+    for key in SHEET_KEYS:
+        value = text_field(form, 'excel_' + key, 4000)
+        if key in SHEET_NUMERIC and value:
+            try:
+                number = int(value)
+            except ValueError:
+                abort(400, description='Invalid input: ' + key)
+            if number < 0 and key not in ('initiative_bonus', 'spell_attack_bonus'):
+                abort(400, description='Invalid input: ' + key)
+            if key in ('death_successes', 'death_failures') and number > 3:
+                abort(400, description='Invalid death save count')
+            if number > 1000000000:
+                abort(400, description='Invalid input: ' + key)
+        excel_values[key] = value
+
+    with connect_db() as conn:
+        owned_character(conn, character_id, user_id)
+        conn.execute('''UPDATE characters SET strength=?, dexterity=?, constitution=?,
+            intelligence=?, wisdom=?, charisma=?, hit_points=?, armor_class=?, inventory=?
+            WHERE character_id=?''', (*scores.values(), hp, ac,
+            '\n'.join(f'{q}x {n}' for n, q, _ in items), character_id))
+        conn.execute('''INSERT OR IGNORE INTO character_details (character_id) VALUES (?)''', (character_id,))
+        conn.execute('''UPDATE character_details SET alignment=?, race=?, languages=?, ideals=?,
+            bonds=?, flaws=?, personality=?, other_notes=?, other_proficiencies=?,
+            max_hit_points=?, gold=?, skill_proficiencies=?, saving_throw_proficiencies=?
+            WHERE character_id=?''',
+            (*(text_values[k] for k in fields), max_hp, gold,
+             json.dumps(skill_profs), json.dumps(save_profs), character_id))
+        # store additional fields without changing existing columns
+        conn.execute('UPDATE character_details SET excel_fields=? WHERE character_id=?', (json.dumps(excel_values), character_id))
+        # replace child rows after all validation passes
+        conn.execute('DELETE FROM character_items WHERE character_id=?', (character_id,))
+        conn.executemany('''INSERT INTO character_items
+            (character_id, item_name, quantity, notes) VALUES (?, ?, ?, ?)''', [(character_id, *item) for item in items])
+        conn.execute('DELETE FROM character_resources WHERE character_id=?', (character_id,))
+        conn.executemany('''INSERT INTO character_resources(character_id, resource_name, current_value, max_value) VALUES (?, ?, ?, ?)''', [(character_id, *resource) for resource in resources])
+    return redirect(url_for('character_sheet', character_id=character_id))
+
+
+# Endpoint 1
+# status check
+@app.route('/status', methods=['GET'])
+def home():
+    return jsonify({"service": "DND Stat Holder", "status": "running"})
+
+
+# Endpoint 2 
+# returns a character as json or 400 on a bad input
+@app.route('/character', methods=['GET'])
+def character():
+    name = request.args.get('nameField', '').strip()
+    level = request.args.get('lvlField', '')
+    player = request.args.get('pNameField', '')
+    character_class = request.args.get('classField', '')
+    alignment = request.args.get('alignField', '')
+    race = request.args.get('raceField', '')
+
+    if not name or not level or not level.isdigit() or not 1 <= int(level) <= 20:
+        abort(400, description='Invalid input')
+    data = {
+        'name': name, 'player': player, 'class': character_class, 'level': int(level), 'alignment': alignment, 'race': race
+    }
+
+    if request.args.get('sheetCheck'):
+        return jsonify(data), 200
+    return render_template('legacy-character.html', data=data), 200
+
+
+@app.route('/docs', methods=['GET'])
+def docs():
+    return jsonify({
+        'service': 'DND Stat Holder', 
+        'routes': ['/login', '/main','/character-creator', '/character', '/characters/create', '/characters/<id>', '/characters/<id>/save', '/status']
+    })
+
+
+# @app.route("/send_stats", methods=['POST'])
+# def read_form():
+#     #these get whatever was put into the form input fields with corresponding names
+#     cName = request.form.get("nameField")
+#     pName = request.form.get("pNameField")
+#     cClass = request.form.get("classField")
+#     cLevel = request.form.get("lvlField")
+#     cAlign = request.form.get("alignField")
+#     cRace = request.form.get("raceField")
+
+
+    
+    
+#     #return {"name" : cName}
+#     # this ugly string is an entire html file with the user inputs subbed in. the return creates a new page with all of their inputs
+#     return f"<head><title>Stat List</title><link rel=\"stylesheet\" href=\"../static/skeleton.css\" /></head><body><div class=\"statsheet\"><h1>Player Stats</h1><h2>Name</h2><p name=\"nameOut\" class=\"inputRes\">{cName}</p><h2>Player</h2><p name=\"pNameOut\" class=\"inputRes\">{pName}</p><h2>Class</h2><p name=\"classOut\" class=\"inputRes\">{cClass}</p><h2>Level</h2><p name=\"lvlOut\" class=\"inputRes\">{cLevel}</p><h2>Alignment</h2><p name=\"alignOut\" class=\"inputRes\">{cAlign}</p><h2>Race</h2><p name=\"raceOut\" class=\"inputRes\">{cRace}</p></div></body>"
+
+
+
+@app.route('/dice-roller', methods=['GET', 'POST'])
+def dice_roller():
+    if request.method == 'POST':
+        dice_types = {
+            'd4': dice_roll.d4,
+            'd6': dice_roll.d6,
+            'd8': dice_roll.d8,
+            'd10': dice_roll.d10,
+            'd12': dice_roll.d12,
+            'd20': dice_roll.d20,
+            'd100': dice_roll.d100
+        }
+
+        try:
+            number = int(request.form.get('number', 1))
+            modifier = int(request.form.get('modifier', 0))
+            dice_type = request.form.get('dice', 'd20')
+            roll_type = request.form.get('roll_type', 'normal')
+
+            if dice_type not in dice_types or number < 1 or number > 100:
+                abort(400, description='Invalid dice selection.')
+
+            if roll_type not in ('normal', 'advantage', 'disadvantage'):
+                abort(400, description='Invalid roll type.')
+
+            if roll_type != 'normal' and (dice_type != 'd20' or number != 1):
+                abort(400, description='Advantage and disadvantage require one D20.')
+
+            if roll_type == 'advantage':
+                rolls = [dice_roll.advantage()]
+            elif roll_type == 'disadvantage':
+                rolls = [dice_roll.disadvantage()]
+            else:
+                result = dice_roll.multiple_dice(number, dice_types[dice_type])
+                rolls = result['rolls']
+
+            session['dice_result'] = {
+                'rolls': rolls,
+                'modifier': modifier,
+                'total': sum(rolls) + modifier,
+                'dice': f'{number}{dice_type}',
+                'roll_type': roll_type
+            }
+
+        except ValueError:
+            abort(400, description='Invalid dice input.')
+
+    return render_template('dice-roller.html')
+
+
+if __name__ == '__main__':
     app.run(debug=True)
