@@ -6,6 +6,7 @@ import sqlite3 #later for database integration (if we go with that instead of cs
 import hashlib #for hashing the user password
 import os
 import json
+import dice_roll
 from database.database import connect_db, create_database, create_sheet_tables, add_excel_sheet_fields, view_player_page as db_view_player_page, remove_player as db_remove_player, get_user_characters as db_get_user_characters
 
 app = Flask(__name__) 
@@ -582,6 +583,37 @@ def docs():
         'routes': ['/login', '/main','/character-creator', '/character', '/characters/create', '/characters/<id>', '/characters/<id>/save', '/status']
     })
 
+@app.route('/dice-roller', methods=['GET', 'POST'])
+def dice_roller():
+    current_user_id()
+
+    result = None
+
+    dice_types = {
+        'D4': dice_roll.d4,
+        'D6': dice_roll.d6,
+        'D8': dice_roll.d8,
+        'D10': dice_roll.d10,
+        'D12': dice_roll.d12,
+        'D20': dice_roll.d20,
+        'D100': dice_roll.d100
+    }
+
+    if request.method == 'POST':
+        dice = request.form.get('dice', 'D20')
+        number = integer_field(request.form, 'number', 1, 100)
+        modifier = integer_field(request.form, 'modifier', -1000, 1000, 0)
+
+        if dice not in dice_types:
+            abort(400, description='Invalid dice type')
+
+        result = dice_roll.roll_with_modifier(
+            number,
+            dice_types[dice],
+            modifier
+        )
+
+    return render_template('dice_roller.html', result=result)
 # @app.route("/send_stats", methods=['POST'])
 # def read_form():
 #     #these get whatever was put into the form input fields with corresponding names
