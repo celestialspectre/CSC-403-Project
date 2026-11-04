@@ -1,12 +1,124 @@
+
 <!DOCTYPE html>
-<html><head><title>DND Stat Input</title><link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}"></head>
-<body><center><h1>New Character</h1>
-<form action="{{ url_for('create_character') }}" method="POST" novalidate>
-<label>Character Name:</label><input required name="nameField"><br>
-<label>Player Name:</label><input required name="pNameField"><br>
-<label>Class:</label><input required name="classField"><br>
-<label>Level:</label><input required name="lvlField" type="number" min="1" max="20" step="1"><br>
-<label>Alignment:</label><input required name="alignField"><br>
-<label>Race:</label><input required name="raceField"><br>
-<button type="submit">Create Character</button>
-</form></center></body></html>
+<html>
+<head>
+    <title>Create Character</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}" />
+</head>
+
+<body>
+    <center>
+        <div id="triangle-down" class="border-decor"></div>
+
+        <div class="login_border">
+            <h1>Welcome to the D&D Character Hub!</h1>
+            <h2>Create a New Character</h2>
+
+            <form action="{{ url_for('create_character') }}" method="POST">
+
+                <label for="nameField">Character Name</label>
+                <br />
+                <input class="field" type="text"
+                       id="nameField" name="nameField" required />
+                <br />
+
+                <label for="pNameField">Player Name</label>
+                <br />
+                <input class="field" type="text"
+                       id="pNameField" name="pNameField" required />
+                <br />
+
+                <label for="classField">Class</label>
+                <br />
+                <select class="field" id="classField" name="classField" required>
+                    <option value="" disabled selected>Select Class</option>
+                    <option value="Artificer">Artificer</option>
+                    <option value="Barbarian">Barbarian</option>
+                    <option value="Bard">Bard</option>
+                    <option value="Cleric">Cleric</option>
+                    <option value="Druid">Druid</option>
+                    <option value="Fighter">Fighter</option>
+                    <option value="Monk">Monk</option>
+                    <option value="Paladin">Paladin</option>
+                    <option value="Ranger">Ranger</option>
+                    <option value="Rogue">Rogue</option>
+                    <option value="Sorcerer">Sorcerer</option>
+                    <option value="Warlock">Warlock</option>
+                    <option value="Wizard">Wizard</option>
+                </select>
+                <br />
+
+                <label for="lvlField">Level</label>
+                <br />
+                <select class="field" id="lvlField" name="lvlField" required>
+                    <option value="" disabled selected>Select Level</option>
+                    {% for level in range(1, 21) %}
+                        <option value="{{ level }}">{{ level }}</option>
+                    {% endfor %}
+                </select>
+                <br />
+
+                <label for="alignField">Alignment</label>
+                <br />
+                <select class="field" id="alignField" name="alignField" required>
+                    <option value="" disabled selected>Select Alignment</option>
+                    <option value="Lawful Good">Lawful Good</option>
+                    <option value="Neutral Good">Neutral Good</option>
+                    <option value="Chaotic Good">Chaotic Good</option>
+                    <option value="Lawful Neutral">Lawful Neutral</option>
+                    <option value="True Neutral">True Neutral</option>
+                    <option value="Chaotic Neutral">Chaotic Neutral</option>
+                    <option value="Lawful Evil">Lawful Evil</option>
+                    <option value="Neutral Evil">Neutral Evil</option>
+                    <option value="Chaotic Evil">Chaotic Evil</option>
+                </select>
+                <br />
+
+                <label for="raceField">Race</label>
+                <br />
+                <select class="field" id="raceField" name="raceField" required>
+                    <option value="" disabled selected>Select Race</option>
+                    <option value="Dragonborn">Dragonborn</option>
+                    <option value="Dwarf">Dwarf</option>
+                    <option value="Elf">Elf</option>
+                    <option value="Gnome">Gnome</option>
+                    <option value="Goliath">Goliath</option>
+                    <option value="Half-Elf">Half-Elf</option>
+                    <option value="Half-Orc">Half-Orc</option>
+                    <option value="Halfling">Halfling</option>
+                    <option value="Human">Human</option>
+                    <option value="Orc">Orc</option>
+                    <option value="Tiefling">Tiefling</option>
+                    <option value="Aasimar">Aasimar</option>
+                    <option value="Tabaxi">Tabaxi</option>
+                    <option value="Genasi">Genasi</option>
+                    <option value="Firbolg">Firbolg</option>
+                    <option value="Triton">Triton</option>
+                    <option value="Goblin">Goblin</option>
+                    <option value="Kobold">Kobold</option>
+                    <option value="Kenku">Kenku</option>
+                    <option value="Tortle">Tortle</option>
+                </select>
+                <br />
+                <br />
+
+                <button type="submit">Create Character</button>
+
+                <p>*Note: Character level must be between 1 and 20.</p>
+
+            </form>
+
+            <form action="{{ url_for('main_menu') }}" method="GET">
+                <button type="submit">Return to Main Menu</button>
+            </form>
+        </div>
+
+        <marquee>
+            <img src="{{ url_for('static', filename='img/dnd.png') }}"
+                 style="width: 10%; height: auto;" />
+        </marquee>
+
+        <div id="triangle-up" class="border-decor"></div>
+    </center>
+</body>
+</html>
