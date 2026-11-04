@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ character['character_name'] }} - Character Sheet</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}">
+</head>
+<body>
+<main class="sheet-container">
+    <a href="{{ url_for('main_menu') }}">← Back to Characters</a>
+    <h1>{{ character['character_name'] }}</h1>
+    <p class="muted">Level {{ character['character_level'] }} {{ character['character_class'] or 'Adventurer' }}</p>
+    <form action="{{ url_for('save_character', character_id=character['character_id']) }}" method="POST" novalidate>
+        <section class="sheet-section">
+            <h2>Character Details</h2>
+            <div class="sheet-grid">
+                <label>Race <input name="race" maxlength="2000" value="{{ details.get('race', '') }}"></label>
+                <label>Alignment <input name="alignment" maxlength="2000" value="{{ details.get('alignment', '') }}"></label>
+                <label>Current HP <input type="number" name="hit_points" min="0" max="9999" value="{{ character['hit_points'] }}"></label>
+                <label>Maximum HP <input type="number" name="max_hit_points" min="1" max="9999" value="{{ details.get('max_hit_points', character['hit_points']) }}"></label>
+                <label>Armor Class <input type="number" name="armor_class" min="0" max="100" value="{{ character['armor_class'] }}"></label>
+                <label>Gold Pieces (GP) <input type="number" name="gold" min="0" max="1000000000" value="{{ details.get('gold', 0) }}"></label>
+            </div>
+        </section>
+        <section class="sheet-section">
+            <h2>Ability Scores</h2>
+            <p class="muted">Modifiers update after you save. Proficiency bonus: +{{ proficiency_bonus }}.</p>
+            <div class="sheet-grid">
+                {% for ability in abilities %}
+                <label>{{ ability|capitalize }} ({{ '%+d'|format(modifiers[ability]) }})
+                    <input type="number" name="{{ ability }}" min="1" max="30" value="{{ character[ability] }}">
+                </label>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="sheet-section">
+            <h2>Saving Throw Proficiencies</h2>
+            <div class="sheet-grid">
+                {% for ability in abilities %}
+                <label class="check-label"><input type="checkbox" name="saving_throw_proficiencies" value="{{ ability }}" {% if ability in prof_saves %}checked{% endif %}>
+                    {{ ability|capitalize }} ({{ '%+d'|format(modifiers[ability] + (proficiency_bonus if ability in prof_saves else 0)) }})
+                </label>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="sheet-section">
+            <h2>Skill Proficiencies</h2>
+            <div class="sheet-grid">
+                {% for skill, ability in skills.items() %}
+                <label class="check-label"><input type="checkbox" name="skill_proficiencies" value="{{ skill }}" {% if skill in prof_skills %}checked{% endif %}>
+                    {{ skill }} ({{ '%+d'|format(modifiers[ability] + (proficiency_bonus if skill in prof_skills else 0)) }})
+                </label>
+                {% endfor %}
+            </div>
+            <label>Other Proficiencies (weapons, armor, tools, etc.)
+                <textarea name="other_proficiencies" rows="3">{{ details.get('other_proficiencies', '') }}</textarea>
+            </label>
+        </section>
+        <section class="sheet-section">
+            <h2>Inventory</h2>
+            <p class="muted">Enter one item per row. Leave an item name blank to remove that row.</p>
+            <div id="inventory-rows">
+                {% for item in items %}
+                <div class="row-fields">
+                    <label>Item <input name="item_name" maxlength="100" value="{{ item['item_name'] }}"></label>
+                    <label>Quantity <input type="number" name="item_quantity" min="0" max="99999" value="{{ item['quantity'] }}"></label>
+                    <label>Notes <input name="item_notes" maxlength="500" value="{{ item['notes'] }}"></label>
+                </div>
+                {% endfor %}
+                <div class="row-fields">
+                    <label>Item <input name="item_name" maxlength="100"></label>
+                    <label>Quantity <input type="number" name="item_quantity" min="0" max="99999" value="1"></label>
+                    <label>Notes <input name="item_notes" maxlength="500"></label>
+                </div>
+            </div>
+            <button type="button" onclick="addRow('inventory-rows')">Add Inventory Item</button>
+        </section>
+        <section class="sheet-section">
+            <h2>Resources & Spell Slots</h2>
+            <p class="muted">Examples: Rage, Ki, Focus Points, Level 1 Spell Slots, Sorcery Points. Use one row per resource.</p>
+            <div id="resource-rows">
+                {% for resource in resources %}
+                <div class="row-fields resource-fields">
+                    <label>Resource <input name="resource_name" maxlength="100" value="{{ resource['resource_name'] }}"></label>
+                    <label>Current <input type="number" name="resource_current" min="0" max="99999" value="{{ resource['current_value'] }}"></label>
+                    <label>Maximum <input type="number" name="resource_max" min="0" max="99999" value="{{ resource['max_value'] }}"></label>
+                </div>
+                {% endfor %}
+                <div class="row-fields resource-fields">
+                    <label>Resource <input name="resource_name" maxlength="100"></label>
+                    <label>Current <input type="number" name="resource_current" min="0" max="99999" value="0"></label>
+                    <label>Maximum <input type="number" name="resource_max" min="0" max="99999" value="0"></label>
+                </div>
+            </div>
+            <button type="button" onclick="addRow('resource-rows')">Add Resource</button>
+        </section>
+        <section class="sheet-section">
+            <h2>Languages & Roleplay</h2>
+            {% for key, title in [('languages','Known Languages'), ('personality','Personality Traits'), ('ideals','Ideals'), ('bonds','Bonds'), ('flaws','Flaws'), ('other_notes','Other Roleplay Notes')] %}
+            <label>{{ title }}
+                <textarea name="{{ key }}" rows="3" maxlength="2000">{{ details.get(key, '') }}</textarea>
+            </label>
+            {% endfor %}
+        </section>
+
+        <section class="sheet-section">
+            <h2>Passive Skills</h2>
+            <p class="muted">Calculated from ability modifiers and selected skill proficiencies; values refresh after saving.</p>
+            <div class="sheet-grid">
+                {% for name, score in passive_skills.items() %}
+                <div class="sheet-static">Passive {{ name }}: <strong>{{ score }}</strong></div>
+                {% endfor %}
+            </div>
+        </section>
+        {% for section, fields in sheet_sections.items() %}
+        <section class="sheet-section excel-section">
+            <h2>{{ section }}</h2>
+            <div class="sheet-grid">
+                {% for key, title in fields %}
+                <label>{{ title }}
+                    {% if key in ('weapons_spells','special_attacks','special_defenses','armor_notes','ammunition','known_spells','magic_items','racial_background_features','class_features','additional_class_info','gems','valuables','consumables','equipment_locations','equipment_weight','encumbrance','misc_possessions','character_bio','allies_organizations','storytelling','misc_info','class_levels') %}
+                    <textarea name="excel_{{ key }}" rows="3" maxlength="4000">{{ excel_values.get(key, '') }}</textarea>
+                    {% else %}
+                    <input name="excel_{{ key }}" {% if key in excel_numeric %}type="number" step="1" {% if key not in ('initiative_bonus','spell_attack_bonus') %}min="0"{% endif %}{% else %}type="text"{% endif %} maxlength="4000" value="{{ excel_values.get(key, '') }}">
+                    {% endif %}
+                </label>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+        <button type="submit" class="save-button">Save Character Sheet</button>
+    </form>
+</main>
+
+<script>
+function addRow(containerId) {
+    const container = document.getElementById(containerId);
+    if (container.children.length >= 100) return;
+    const clone = container.lastElementChild.cloneNode(true);
+    clone.querySelectorAll('input').forEach(input => {
+        input.value = input.type === 'number' ? (input.name === 'item_quantity' ? '1' : '0') : '';
+    });
+    container.appendChild(clone);
+}
+</script>
+</body>
+</html>

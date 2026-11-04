@@ -168,4 +168,49 @@ if __name__ == "__main__":
     print("Database created successfully.")
 
 
+# character sheet extension
+def create_sheet_tables():
+    # add detail tables without modifying or dropping existing character data
+    with connect_db() as conn:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS character_details (
+            character_id INTEGER PRIMARY KEY,
+            alignment TEXT NOT NULL DEFAULT '',
+            race TEXT NOT NULL DEFAULT '',
+            max_hit_points INTEGER NOT NULL DEFAULT 10,
+            gold INTEGER NOT NULL DEFAULT 0 CHECK(gold >= 0),
+            languages TEXT NOT NULL DEFAULT '',
+            ideals TEXT NOT NULL DEFAULT '',
+            bonds TEXT NOT NULL DEFAULT '',
+            flaws TEXT NOT NULL DEFAULT '',
+            personality TEXT NOT NULL DEFAULT '',
+            other_notes TEXT NOT NULL DEFAULT '',
+            skill_proficiencies TEXT NOT NULL DEFAULT '[]',
+            saving_throw_proficiencies TEXT NOT NULL DEFAULT '[]',
+            other_proficiencies TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY(character_id) REFERENCES characters(character_id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS character_items (
+            item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            character_id INTEGER NOT NULL,
+            item_name TEXT NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity >= 0),
+            notes TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY(character_id) REFERENCES characters(character_id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS character_resources (
+            resource_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            character_id INTEGER NOT NULL,
+            resource_name TEXT NOT NULL,
+            current_value INTEGER NOT NULL DEFAULT 0 CHECK(current_value >= 0),
+            max_value INTEGER NOT NULL DEFAULT 0 CHECK(max_value >= 0),
+            FOREIGN KEY(character_id) REFERENCES characters(character_id) ON DELETE CASCADE
+        );""")
 
+# reference excel sheet that I sent yall
+def add_excel_sheet_fields():
+    # store supplementary sheet fields as JSON
+    with connect_db() as conn:
+        columns = {row[1] for row in conn.execute('PRAGMA table_info(character_details)')}
+        if 'excel_fields' not in columns:
+            conn.execute("ALTER TABLE character_details ADD COLUMN excel_fields TEXT NOT NULL DEFAULT '{}'")
