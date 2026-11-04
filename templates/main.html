@@ -15,15 +15,14 @@
                 </button>
             </form>
 
-            <div class="char_tab" style="background-color:antiquewhite; margin-top:25px; height:80px; width: 400px" onclick="location.href='/character'">
-                <h2 style="text-decoration: none;text-align: left;padding-top: 15px;padding-left:15px">Guy Fantasy</h2>
-                <h4 style="text-decoration: none;padding-top: 5px;padding-left:15px;">Lv. 12 · Human Fighter</h4>
-            </div>
-
-            <div class="char_tab" style="background-color:antiquewhite; margin-top:25px; height:80px; width: 400px" onclick="location.href='/character'">
-                <h2 style="text-decoration: none;text-align: left;padding-top: 15px;padding-left:15px">Moneta</h2>
-                <h4 style="text-decoration: none;padding-top: 5px;padding-left:15px;">Lv. 5 · Half-Elf Warlock</h4>
-            </div>
-        </div>
+        <!-- replaced hard coded characters with saved character list -->
+        {% for character in characters %}
+        <a class="character-link" href="{{ url_for('character_sheet', character_id=character[0]) }}">
+            <h2>{{ character[1] }}</h2>
+            <h4>Lv. {{ character[3] }} · {{ character[2] or 'Adventurer' }}</h4>
+        </a>
+        {% else %}
+        <p id="empty_warning">No saved characters yet. Select New Character to get started.</p>
+        {% endfor %}
     </div>
 </body>
