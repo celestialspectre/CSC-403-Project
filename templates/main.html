@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <head>
     <title>Main Menu</title>
@@ -7,13 +8,23 @@
 <body>
     <div class="main_elements">
         <div class="char_container">
-            <form>
-                <button
-                    style="background-color:antiquewhite; height:50px; width:400px; font-size: large; font-family: 'Times New Roman', Times, serif; font-weight: bold; text-align: left; padding-left:15px" 
-                    formaction="/character-creator">
-                    New Character
-                </button>
-            </form>
+            <div style="display: flex; gap: 10px;">
+                <form>
+                    <button
+                        style="background-color:antiquewhite; height:50px; width:400px; font-size: large; font-family: 'Times New Roman', Times, serif; font-weight: bold; text-align: left; padding-left:15px"
+                        formaction="/character-creator">
+                        New Character
+                    </button>
+                </form>
+
+                <form>
+                    <button
+                        style="background-color:antiquewhite; height:50px; width:200px; font-size: large; font-family: 'Times New Roman', Times, serif; font-weight: bold; text-align: left; padding-left:15px"
+                        formaction="{{ url_for('dice_roller') }}">
+                        Dice Roller
+                    </button>
+                </form>
+            </div>
 
         <!-- replaced hard coded characters with saved character list -->
         {% for character in characters %}
@@ -22,7 +33,7 @@
             <h4>Lv. {{ character[3] }} · {{ character[2] or 'Adventurer' }}</h4>
         </a>
         {% else %}
-        <p id="empty_warning">No saved characters yet. Select New Character to get started.</p>
+        <p>No saved characters yet. Select New Character to get started.</p>
         {% endfor %}
     </div>
 </body>
