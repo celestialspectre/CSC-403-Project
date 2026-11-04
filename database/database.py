@@ -1,4 +1,3 @@
-
 import sqlite3
 import time
 
@@ -12,7 +11,7 @@ def connect_db():
 
 
 def create_database():
-    ###Consists of four main tables consisting of users, parties, party members and characters 
+    ###Consists of main tables consisting of users, parties, party members and characters 
     with connect_db() as conn:
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
@@ -103,7 +102,7 @@ def create_database():
         );
 
         -- class proficient skills (will be options for user to choose from)
-        CREATE TABLE class_skills (
+        CREATE TABLE IF NOT EXISTS class_skills (
             class_id INTEGER NOT NULL,
             skill_id INTEGER NOT NULL,
 
@@ -115,7 +114,7 @@ def create_database():
         );
 
         -- class saving throw proficiencies
-        CREATE TABLE class_saving_throws (
+        CREATE TABLE IF NOT EXISTS class_saving_throws (
             class_id INTEGER NOT NULL,
             ability_id INTEGER NOT NULL,
 
@@ -213,7 +212,6 @@ def create_database():
             ON characters(user_id);
         """)
 
-
 def is_dm_of_party(conn, dm_user_id, party_id):
     """Check whether the user is the assigned DM or a moderator."""
     result = conn.execute("""
@@ -307,6 +305,3 @@ def remove_player(dm_user_id, party_id, player_id):
 if __name__ == "__main__":
     create_database()
     print("Database created successfully.")
-
-
-
