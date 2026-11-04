@@ -1,38 +1,72 @@
+
 <!DOCTYPE html>
+<html>
 <head>
     <title>Login</title>
-    <link rel="stylesheet" href="static/styles/skeleton.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}" />
 </head>
 
 <body>
-    <center> 
+    <center>
         <div id="triangle-down" class="border-decor"></div>
-        
+
         <div class="login_border">
             <h1>Welcome to the D&D Character Hub!</h1>
+
             
-            <form action="/main" method="GET">
-                <label for="username">Username </label>
+            <form action="{{ url_for('login') }}" method="POST">
+
+                <label for="username">Username</label>
                 <br />
-                <input class="field" type="text" name="username" required />
+                <input
+                    class="field"
+                    type="text"
+                    id="username"
+                    name="username"
+                    required
+                />
                 <br />
-                
+
                 <label for="password">Password</label>
                 <br />
-                <input class="field" type="password" name="password" minlength="8" required pattern="[0-9a-zA-Z]*[\(\)\[\]\{\}:;.<>.,\/`~!@#$%^&*\+\-_=\*]+[0-9a-zA-Z]*" />
+                <input
+                    class="field"
+                    type="password"
+                    id="password"
+                    name="password"
+                    minlength="8"
+                    required
+                />
                 <br />
                 <br />
-                <button>Login</button>
-                <p>*Note: Password must contain one special character and be at least 8 characters long.</p>
-                
+
+                <button type="submit">Login</button>
+
+                <p>
+                    *Note: Password must be at least 8 characters long.
+                </p>
+
+            </form>
+
+            
+            {% if error %}
+                <p style="color: red;">{{ error }}</p>
+            {% endif %}
+
+            
+            <form action="{{ url_for('register') }}" method="GET">
+                <button type="submit">Register</button>
             </form>
         </div>
 
-
         <marquee>
-            <img src="static/img/dnd.png" style="width: 10%; height: auto;"/>
+            <img
+                src="{{ url_for('static', filename='img/dnd.png') }}"
+                style="width: 10%; height: auto;"
+            />
         </marquee>
 
-        <div id="triangle-up" class="border-decor">
+        <div id="triangle-up" class="border-decor"></div>
     </center>
 </body>
+</html>
