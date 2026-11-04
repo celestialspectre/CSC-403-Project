@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>D&D Character Hub - Dice Roller</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}" />
+</head>
+
+<body>
+    <center>
+        <div id="triangle-down" class="border-decor"></div>
+
+        <div class="login_border">
+            <h1>Welcome to the D&D Character Hub!</h1>
+            <h2>Dice Roller</h2>
+
+            <!-- Dice Roller Form -->
+            <form action="{{ url_for('dice_roller') }}" method="POST">
+
+                <!-- Dice Type Dropdown -->
+                <label for="dice_type">Select Dice Type</label>
+                <br />
+                <select class="field" id="dice_type" name="dice_type" required>
+                    <option value="d4">D4</option>
+                    <option value="d6">D6</option>
+                    <option value="d8">D8</option>
+                    <option value="d10">D10</option>
+                    <option value="d12">D12</option>
+                    <option value="d20" selected>D20</option>
+                    <option value="d100">D100</option>
+                </select>
+                <br />
+
+                <!-- Number of Dice -->
+                <label for="number">Number of Dice</label>
+                <br />
+                <input class="field" type="number"
+                       id="number" name="number"
+                       min="1" max="100" value="1" required />
+                <br />
+
+                <!-- Modifier -->
+                <label for="modifier">Modifier</label>
+                <br />
+                <input class="field" type="number"
+                       id="modifier" name="modifier"
+                       value="0" required />
+                <br />
+
+                <!-- Roll Type Dropdown -->
+                <label for="roll_type">Roll Type</label>
+                <br />
+                <select class="field" id="roll_type" name="roll_type" required>
+                    <option value="normal">Normal Roll</option>
+                    <option value="advantage">Advantage (D20)</option>
+                    <option value="disadvantage">Disadvantage (D20)</option>
+                </select>
+                <br />
+                <br />
+
+                <button type="submit">Roll Dice</button>
+
+                <p>*Note: Advantage and Disadvantage require one D20.</p>
+
+            </form>
+
+            <!-- Display Dice Results -->
+            {% if result %}
+                <div class="character">
+                    <h2>Roll Results</h2>
+
+                    <p>
+                        <strong>Dice:</strong>
+                        {{ result["dice_type"] }}
+                    </p>
+
+                    <p>
+                        <strong>Individual Rolls:</strong>
+                        {{ result["rolls"] }}
+                    </p>
+
+                    <p>
+                        <strong>Modifier:</strong>
+                        {{ result["modifier"] }}
+                    </p>
+
+                    <h2>Total: {{ result["total"] }}</h2>
+                </div>
+            {% endif %}
+
+            <!-- Navigation Buttons -->
+            <form action="{{ url_for('character_creator') }}" method="GET">
+                <button type="submit">Character Creator</button>
+            </form>
+
+            <form action="{{ url_for('my_characters') }}" method="GET">
+                <button type="submit">My Characters</button>
+            </form>
+
+            <form action="{{ url_for('main_menu') }}" method="GET">
+                <button type="submit">Return to Main Menu</button>
+            </form>
+
+        </div>
+
+        <marquee>
+            <img src="{{ url_for('static', filename='img/dnd.png') }}"
+                 style="width: 10%; height: auto;" />
+        </marquee>
+
+        <div id="triangle-up" class="border-decor"></div>
+    </center>
+</body>
+</html>
