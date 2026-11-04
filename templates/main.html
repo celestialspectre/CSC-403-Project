@@ -22,7 +22,7 @@
             <h4>Lv. {{ character[3] }} · {{ character[2] or 'Adventurer' }}</h4>
         </a>
         {% else %}
-        <p>No saved characters yet. Select New Character to get started.</p>
+        <p id="empty_warning">No saved characters yet. Select New Character to get started.</p>
         {% endfor %}
     </div>
 </body>
