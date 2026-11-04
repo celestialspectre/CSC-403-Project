@@ -40,26 +40,167 @@ def create_database():
                 REFERENCES users(user_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS races (
+            race_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            race_name VARCHAR(100) NOT NULL UNIQUE,
+            description TEXT,
+            speed INTEGER NOT NULL DEFAULT 30
+        );
+
+        CREATE TABLE IF NOT EXISTS subraces (
+            subrace_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            race_id INT NOT NULL,
+            subrace_name VARCHAR(100) NOT NULL,
+            description TEXT,
+
+            FOREIGN KEY (race_id)
+                REFERENCES races(race_id),
+            UNIQUE (race_id, subrace_name),
+            UNIQUE (subrace_id, race_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS classes (
+            class_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_name VARCHAR(100) NOT NULL UNIQUE,
+            description TEXT,
+            hit_dice INTEGER NOT NULL,
+            starting_skills INTEGER NOT NULL DEFAULT 0,
+
+            CHECK (hit_dice IN (6, 8, 10, 12)),
+            CHECK (starting_skills >= 0)
+        );
+
+        CREATE TABLE IF NOT EXISTS abilities (
+            ability_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ability_name VARCHAR(20) NOT NULL UNIQUE
+        );
+
+        CREATE TABLE IF NOT EXISTS skills (
+            skill_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            skill_name VARCHAR(50) NOT NULL UNIQUE,
+            ability_id INTEGER NOT NULL,
+
+            FOREIGN KEY (ability_id)
+                REFERENCES abilities(ability_id)
+        );
+
+        -- race ability bonuses (the ability that increases for each race and how much)
+        CREATE TABLE IF NOT EXISTS race_ability_bonuses (
+            bonus_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            race_id INTEGER NOT NULL,
+            subrace_id INTEGER NULL,
+            ability_id INTEGER NOT NULL,
+            bonus INTEGER NOT NULL,
+
+            FOREIGN KEY (race_id) 
+                REFERENCES races(race_id),
+            FOREIGN KEY (subrace_id, race_id)
+                REFERENCES subraces(subrace_id, race_id),
+            FOREIGN KEY (ability_id)
+                REFERENCES abilities(ability_id),
+
+            UNIQUE (race_id, subrace_id, ability_id)
+        );
+
+        -- class proficient skills (will be options for user to choose from)
+        CREATE TABLE class_skills (
+            class_id INTEGER NOT NULL,
+            skill_id INTEGER NOT NULL,
+
+            PRIMARY KEY (class_id, skill_id),
+            FOREIGN KEY (class_id)
+                REFERENCES classes(class_id),
+            FOREIGN KEY (skill_id)
+                REFERENCES skills(skill_id)
+        );
+
+        -- class saving throw proficiencies
+        CREATE TABLE class_saving_throws (
+            class_id INTEGER NOT NULL,
+            ability_id INTEGER NOT NULL,
+
+            PRIMARY KEY (class_id, ability_id),
+            FOREIGN KEY (class_id) 
+                REFERENCES classes(class_id),
+            FOREIGN KEY (ability_id)
+                REFERENCES abilities(ability_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS equipment (
+            equipment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            equipment_name VARCHAR(100) NOT NULL UNIQUE,
+            category VARCHAR(50) NOT NULL,
+            description TEXT,
+            weight DECIMAL(10,2) DEFAULT 0,
+            cost DECIMAL(10,2) DEFAULT 0
+        ); 
+
         CREATE TABLE IF NOT EXISTS characters (
             character_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            party_id INTEGER NOT NULL,
+            party_id INTEGER NULL, -- changed from not null to null because a character does not have to be in a party
             character_name TEXT NOT NULL,
-            character_class TEXT,
-            character_level INTEGER DEFAULT 1,
-            strength INTEGER DEFAULT 10,
-            dexterity INTEGER DEFAULT 10,
-            constitution INTEGER DEFAULT 10,
-            intelligence INTEGER DEFAULT 10,
-            wisdom INTEGER DEFAULT 10,
-            charisma INTEGER DEFAULT 10,
-            hit_points INTEGER DEFAULT 10,
+            race_id INTEGER NOT NULL,
+            subrace_id INTEGER NULL,
+            class_id INTEGER NOT NULL,
+            level INTEGER NOT NULL DEFAULT 1,
+
+            strength INTEGER NOT NULL DEFAULT 10,
+            dexterity INTEGER NOT NULL DEFAULT 10,
+            constitution INTEGER NOT NULL DEFAULT 10,
+            intelligence INTEGER NOT NULL DEFAULT 10,
+            wisdom INTEGER NOT NULL DEFAULT 10,
+            charisma INTEGER NOT NULL DEFAULT 10,
+
+            max_hp INTEGER NOT NULL,
+            current_hp INTEGER NOT NULL,
+            temp_hp INTEGER NOT NULL DEFAULT 0,
+
+            exp INTEGER NOT NULL DEFAULT 0,
             armor_class INTEGER DEFAULT 10,
-            inventory TEXT,
             backstory TEXT,
-            FOREIGN KEY (user_id) REFERENCES users(user_id),
-            FOREIGN KEY (party_id) REFERENCES parties(party_id)
-                ON DELETE CASCADE
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(user_id),
+            FOREIGN KEY (race_id)
+                REFERENCES races(race_id),
+            FOREIGN KEY (subrace_id, race_id)
+                REFERENCES subraces(subrace_id, race_id),
+            FOREIGN KEY (class_id)
+                REFERENCES classes(class_id),
+            FOREIGN KEY (party_id)
+                REFERENCES parties(party_id)
+                ON DELETE CASCADE,
+
+            CHECK (level BETWEEN 1 AND 20),
+            CHECK (max_hp > 0),
+            CHECK (current_hp >= 0),
+            CHECK (temp_hp >= 0)
+        );
+
+        CREATE TABLE IF NOT EXISTS character_skill_proficiencies (
+            character_id INTEGER NOT NULL,
+            skill_id INTEGER NOT NULL,
+
+            PRIMARY KEY (character_id, skill_id),
+            FOREIGN KEY (character_id)
+                REFERENCES characters(character_id),
+            FOREIGN KEY (skill_id)
+                REFERENCES skills(skill_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS character_equipment (
+            character_equipment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            character_id INTEGER NOT NULL,
+            equipment_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            is_equipped BOOLEAN NOT NULL DEFAULT FALSE,
+
+            FOREIGN KEY (character_id)
+                REFERENCES characters(character_id),
+            FOREIGN KEY (equipment_id)
+                REFERENCES equipment(equipment_id),
+            CHECK (quantity > 0)
         );
 
         CREATE INDEX IF NOT EXISTS idx_members_user
