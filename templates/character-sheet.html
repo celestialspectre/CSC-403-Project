@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,6 +10,9 @@
 <body>
 <main class="sheet-container">
     <a href="{{ url_for('main_menu') }}">← Back to Characters</a>
+    <a href="{{ url_for('dice_roller') }}">
+        <button type="button">Dice Roller</button>
+    </a>
     <h1>{{ character['character_name'] }}</h1>
     <p class="muted">Level {{ character['character_level'] }} {{ character['character_class'] or 'Adventurer' }}</p>
     <form action="{{ url_for('save_character', character_id=character['character_id']) }}" method="POST" novalidate>
@@ -103,7 +107,6 @@
             </label>
             {% endfor %}
         </section>
-
         <section class="sheet-section">
             <h2>Passive Skills</h2>
             <p class="muted">Calculated from ability modifiers and selected skill proficiencies; values refresh after saving.</p>
