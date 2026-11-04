@@ -59,3 +59,11 @@ div p{
 form {
     justify-items: center;
 }
+
+.form-step {
+    display: none;
+}
+
+.form-step.active {
+    display: block;
+}

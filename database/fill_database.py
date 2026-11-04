@@ -151,13 +151,13 @@ SUBRACES = [
 
 RACE_ABILITY_BONUSES = [
     ("Dwarf", None, "Constitution", 2),
-    ("Dwarf", "Hill Dwarf", "Wisdom", 1),
-    ("Dwarf", "Mountain Dwarf", "Strength", 2),
+    ("Dwarf", "Hill", "Wisdom", 1),
+    ("Dwarf", "Mountain", "Strength", 2),
 
     ("Elf", None, "Dexterity", 2),
-    ("Elf", "High Elf", "Intelligence", 1),
-    ("Elf", "Wood Elf", "Wisdom", 1),
-    ("Elf", "Dark Elf (Drow)", "Charisma", 1),
+    ("Elf", "High", "Intelligence", 1),
+    ("Elf", "Wood", "Wisdom", 1),
+    ("Elf", "Dark", "Charisma", 1),
 
     ("Halfling", None, "Dexterity", 2),
     ("Halfling", "Lightfoot", "Charisma", 1),
@@ -174,8 +174,8 @@ RACE_ABILITY_BONUSES = [
     ("Dragonborn", None, "Charisma", 1),
 
     ("Gnome", None, "Intelligence", 2),
-    ("Gnome", "Forest Gnome", "Dexterity", 1),
-    ("Gnome", "Rock Gnome", "Constitution", 1),
+    ("Gnome", "Forest", "Dexterity", 1),
+    ("Gnome", "Rock", "Constitution", 1),
 
     ("Half-Elf", None, "Charisma", 2),
 
@@ -299,8 +299,8 @@ def fill_class_saving_throws(conn):
 
 def fill_races(conn):
     conn.executemany("""
-        INSERT OR IGNORE INTO races (race_name, description, speed)
-        VALUES (?, ?, ?)
+        INSERT OR IGNORE INTO races (race_name, speed)
+        VALUES (?, ?)
         """,
         RACES
     )
@@ -315,12 +315,12 @@ def fill_subraces(conn):
 
     race_ids = {row[1]: row[0] for row in cursor.fetchall()}
 
-    subrace_data = [(race_ids[race_name], subrace_name, description)
-        for race_name, subrace_name, description in SUBRACES]
+    subrace_data = [(race_ids[race_name], subrace_name)
+        for race_name, subrace_name in SUBRACES]
 
     conn.executemany("""
-        INSERT OR IGNORE INTO subraces (race_id, subrace_name, description)
-        VALUES (?, ?, ?)
+        INSERT OR IGNORE INTO subraces (race_id, subrace_name)
+        VALUES (?, ?)
         """,
         subrace_data
     )

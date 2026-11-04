@@ -2,7 +2,8 @@
 
 
 from flask import *
-import sqlite3 #later for database integration (if we go with that instead of csv files)
+from database.database import connect_db
+#import sqlite3 #later for database integration (if we go with that instead of csv files)
 import hashlib #for hashing the user password
 
 app = Flask(__name__) 
@@ -32,8 +33,9 @@ def main_menu():
 
     return render_template("main.html")
 
-@app.route('/character-creator', methods=['GET'])
+@app.route('/character/creator', methods=['GET'])
 def character_creator():
+    return render_template('characters/creator.html')
     # username = request.args.get("username", "")
     # password = request.args.get("password", "")
 
@@ -47,52 +49,52 @@ def character_creator():
     # ===
 
     # temporary character saving stuff, once database is fully made this can be changed however we need
-    with sqlite3.connect('characters.db') as conn:
-        conn.execute('CREATE TABLE IF NOT EXISTS characters (id INTEGER PRIMARY KEY, name TEXT, player TEXT, class_name TEXT, level INTEGER, alignment TEXT, race TEXT)')
-        characters = conn.execute('SELECT id, name, class_name, level FROM characters ORDER BY id DESC').fetchall()
+    # with sqlite3.connect('characters.db') as conn:
+    #     conn.execute('CREATE TABLE IF NOT EXISTS characters (id INTEGER PRIMARY KEY, name TEXT, player TEXT, class_name TEXT, level INTEGER, alignment TEXT, race TEXT)')
+    #     characters = conn.execute('SELECT id, name, class_name, level FROM characters ORDER BY id DESC').fetchall()
         
 
-    return """
-        <head>
-            <title>DND Stat Input</title> <!--name of the tab-->
-            <link rel="stylesheet" href="../static/styles/skeleton.css" /> <!--connects the stylesheet (css) to the page-->
-        </head>
+    # return """
+    #     <head>
+    #         <title>DND Stat Input</title> <!--name of the tab-->
+    #         <link rel="stylesheet" href="../static/styles/skeleton.css" /> <!--connects the stylesheet (css) to the page-->
+    #     </head>
 
-        <body> 
-            <center>
-            <form action="/character" method="GET"> <!--sends the form data to the /character endpoint in web.py as a string-->
-                <label>Character Name: </label> <!--label for text box-->
-                <input required name="nameField"> <!--actual text box-->
-                <br /> <!--a line breal to separate elements better-->
+    #     <body> 
+    #         <center>
+    #         <form action="/character" method="GET"> <!--sends the form data to the /character endpoint in web.py as a string-->
+    #             <label>Character Name: </label> <!--label for text box-->
+    #             <input required name="nameField"> <!--actual text box-->
+    #             <br /> <!--a line breal to separate elements better-->
                 
-                <label>Player Name: </label>
-                <input required name="pNameField">
-                <br />
+    #             <label>Player Name: </label>
+    #             <input required name="pNameField">
+    #             <br />
                 
-                <label>Class: </label>
-                <input required name="classField">
-                <br />
+    #             <label>Class: </label>
+    #             <input required name="classField">
+    #             <br />
                 
-                <label>Level: </label>
-                <input required name="lvlField" type="number" min="1" max="20" step="1">
-                <br />
+    #             <label>Level: </label>
+    #             <input required name="lvlField" type="number" min="1" max="20" step="1">
+    #             <br />
                 
-                <label>Alignment: </label>
-                <input required name="alignField">
-                <br />
+    #             <label>Alignment: </label>
+    #             <input required name="alignField">
+    #             <br />
                 
-                <label>Race: </label>
-                <input required name="raceField">
-                <br />
+    #             <label>Race: </label>
+    #             <input required name="raceField">
+    #             <br />
 
-                <label>Check this to go to the json output</label>
-                <input type="checkbox" name="sheetCheck">
+    #             <label>Check this to go to the json output</label>
+    #             <input type="checkbox" name="sheetCheck">
 
-                <button>Submit</button> <!--submit button-->
-                <br />
-            </form>
-            </center>
-    """,200
+    #             <button>Submit</button> <!--submit button-->
+    #             <br />
+    #         </form>
+    #         </center>
+    # """,200
 
 # Endpoint 1
 # status check
@@ -191,6 +193,63 @@ def docs():
     </body>
     </html>
     """
+
+@app.route("/api/races")
+def get_races():
+    with connect_db() as conn:
+        cursor = conn.execute("""
+            SELECT race_id, race_name, description, speed
+            FROM races
+            ORDER BY race_name
+        """)
+
+        races = [{
+            "id": row[0],
+            "name": row[1],
+            "description": row[2],
+            "speed": row[3]
+        } for row in cursor.fetchall()]
+
+    return jsonify(races)
+
+# <int:race_id> will be passed into get_subraces()
+@app.route("/api/races/<int:race_id>/subraces")
+def get_subraces(race_id):
+    with connect_db() as conn:
+        cursor = conn.execute("""
+            SELECT subrace_id, subrace_name, description
+            FROM subraces
+            WHERE race_id = ?
+            ORDER BY subrace_name
+        """, (race_id,))
+
+        subraces = [{
+            "id": row[0],
+            "name": row[1],
+            "description": row[2]
+
+        } for row in cursor.fetchall()]
+
+    return jsonify(subraces)
+
+@app.route("/api/classes")
+def get_classes():
+    with connect_db() as conn:
+        cursor = conn.execute("""
+            SELECT class_id, class_name, description, hit_dice, starting_skills
+            FROM classes
+            ORDER BY class_name
+        """)
+
+        classes = [{
+            "id": row[0],
+            "name": row[1],
+            "description": row[2],
+            "hit_dice": row[3],
+            "starting_skills": row[4]
+        } for row in cursor.fetchall()]
+
+    return jsonify(classes)
 
 # @app.route("/send_stats", methods=['POST'])
 # def read_form():

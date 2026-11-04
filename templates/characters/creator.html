@@ -1,0 +1,91 @@
+<!--The character creator-->
+<!DOCTYPE html>
+
+<head>
+    <title>Character Creator</title> <!--name of the tab-->
+    <link rel="stylesheet" href="../static/styles/skeleton.css" /> <!--connects the stylesheet (css) to the page-->
+</head>
+
+
+<body> 
+    <header>
+        <h1>Character Creator</h1>
+    </header>
+
+    <!-- navigation area at the top with the different steps -->
+    <nav class="steps">
+        <span class="step-label active">Basic Information</span>
+        <span class="step-label">Race</span>
+        <span class="step-label">Class</span>
+        <span class="step-label">Abilities</span>
+        <span class="step-label">Review</span>
+    </nav>
+
+    <form id="character-form">
+        <!-- Basic Information -->
+        <section class="form-step active">
+
+            <h2>Character Details</h2>
+
+            <label for="character-name">Character Name: </label>
+            <input type="text" id="character-name" placeholder="Enter character name">
+            <br />
+    
+        </section>
+
+        <!-- Races -->
+        <section class="form-step">
+
+            <h2>Choose your Race</h2>
+
+            <label for="race">Race: </label>
+            <select id="race">
+                <option value="">Select a race</option>
+            </select>
+
+            <label for="subrace">Subrace: </label>
+            <select id="subrace" disabled>
+                <option value="">Select a subrace</option>
+            </select>
+
+            <div id="raceInfo" class="info"></div>    
+        </section>
+
+        <!-- Classes -->
+        <section class="form-step">
+
+            <h2>Choose your Class</h2>
+
+            <label for="class">Class: </label>
+            <select id="class">
+                <option value="">Select a class</option>
+            </select>
+
+            <div id="classInfo" class="info"></div>    
+        </section>
+
+        <!-- Abilities -->
+        <section class="form-step">
+
+            <h2>Ability Scores</h2>
+    
+        </section>
+
+        <!-- Review -->
+        <section class="form-step">
+
+            <h2>Review Character</h2>
+
+        </section>
+
+        <p id="form-error" role="alert"></p>
+
+        <div class="form-navigation">
+            <button type="button" id="back">Back</button>
+
+            <button type="button" id="next">Next</button>
+        </div>
+    </form>
+
+    <script src="/static/js/creator.js"></script>
+</body>
