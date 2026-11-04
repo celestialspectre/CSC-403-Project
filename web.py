@@ -7,6 +7,9 @@ import hashlib #for hashing the user password
 import os
 import json
 from database.database import connect_db, create_database, create_sheet_tables, add_excel_sheet_fields, view_player_page as db_view_player_page, remove_player as db_remove_player, get_user_characters as db_get_user_characters
+import requests #run [python -m pip install requests] for this to work
+import json
+from api_helper import parse_description
 
 app = Flask(__name__) 
 
@@ -123,6 +126,10 @@ SHEET_NUMERIC = {
     'spell_save_dc',
     'spell_attack_bonus'
 }
+
+#api parameters. append desired destination to url w/ concatenation
+url = "https://www.dnd5eapi.co/api/2024/" #api base url
+data = '{"query"}'
 
 def integer_field(form, key, minimum, maximum, default=None):
     raw = form.get(key, '')
@@ -573,6 +580,33 @@ def character():
     if request.args.get('sheetCheck'):
         return jsonify(data), 200
     return render_template('legacy-character.html', data=data), 200
+
+@app.route('/conditions', methods=['GET'])
+def conditions():
+    conditions = ['blinded', 'charmed', 'deafened', 'exhaustion', 'frightened', 'grappled', 'incapacitated', 'invisible', 'paralyzed', 'petrified', 'poisoned', 'prone', 'restrained', 'stunned', 'unconscious']
+
+    dictList = []
+
+    for cond in conditions:
+        append = f"conditions/{cond}"
+
+        payload = {}
+        headers = {
+            'Accept': 'application/json'
+        }
+
+        response = requests.request("GET", url+append, headers=headers, data=payload) #queries the api. "conditions/blinded gives the output for the blinded condition"
+
+        #condition json output from api: index, name, description, url, updated_at
+        dict = json.loads(response.text) #splits json output into a dictinoary 
+
+        dict["description"] = parse_description(dict["description"])
+        dictList += [dict]
+
+    return render_template("statuses.html", conditions=dictList)
+
+
+
 
 
 @app.route('/docs', methods=['GET'])
