@@ -6,7 +6,7 @@ import sqlite3 #later for database integration (if we go with that instead of cs
 import hashlib #for hashing the user password
 import os
 import json
-from database.database import connect_db, create_database, create_sheet_tables, add_excel_sheet_fields
+from database.database import connect_db, create_database, create_sheet_tables, add_excel_sheet_fields, view_player_page as db_view_player_page, remove_player as db_remove_player, get_user_characters as db_get_user_characters
 
 app = Flask(__name__) 
 
@@ -282,7 +282,122 @@ def character_creator():
                 {% endif %}
             </section>-->
             """,200'''
+@app.route('/party/<int:party_id>/player/<int:player_id>', methods=['GET'])
+def dm_view_player(party_id, player_id):
 
+    dm_user_id = current_user_id()
+
+    try:
+        result = db_view_player_page(
+            dm_user_id,
+            party_id,
+            player_id
+        )
+
+        player = result["player"]
+        characters = result["characters"]
+
+        return jsonify({
+            "player": {
+                "user_id": player[0],
+                "username": player[1]
+            },
+            "characters": [
+                {
+                    "character_id": character[0],
+                    "character_name": character[1],
+                    "character_class": character[2],
+                    "level": character[3]
+                }
+                for character in characters
+            ],
+            "response_seconds": result["response_seconds"]
+        })
+
+    except PermissionError as error:
+        return jsonify({"error": str(error)}), 403
+
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 404
+
+
+@app.route('/parties/create', methods=['POST'])
+def create_party():
+    user_id = current_user_id()
+
+    party_name = text_field(request.form, 'party_name', 100, True)
+
+    with connect_db() as conn:
+        cursor = conn.execute("""
+            INSERT INTO parties (party_name, dm_user_id)
+            VALUES (?, ?)
+        """, (party_name, user_id))
+
+        party_id = cursor.lastrowid
+
+        # Add the DM to the party
+        conn.execute("""
+            INSERT INTO party_members (party_id, user_id)
+            VALUES (?, ?)
+        """, (party_id, user_id))
+
+    return jsonify({
+        "success": True,
+        "party_id": party_id,
+        "party_name": party_name
+    }), 201
+
+
+@app.route('/party/<int:party_id>/remove/<int:player_id>', methods=['POST'])
+def dm_remove_player(party_id, player_id):
+
+    dm_user_id = current_user_id()
+
+    try:
+        result = db_remove_player(
+            dm_user_id,
+            party_id,
+            player_id
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "Player successfully removed.",
+            "response_seconds": result["response_seconds"]
+        })
+
+    except PermissionError as error:
+        return jsonify({"error": str(error)}), 403
+
+    except ValueEr:
+        return jsonify({"error": str(error)}), 404
+
+@app.route('/party/<int:party_id>/join', methods=['POST'])
+def join_party(party_id):
+
+    user_id = current_user_id()
+
+    with connect_db() as conn:
+
+        party = conn.execute("""
+            SELECT party_id
+            FROM parties
+            WHERE party_id = ?
+        """, (party_id,)).fetchone()
+
+        if party is None:
+            return jsonify({"error": "Party not found."}), 404
+
+        try:
+            conn.execute("""
+                INSERT INTO party_members (party_id, user_id)
+                VALUES (?, ?)
+            """, (party_id, user_id))
+
+        except sqlite3.IntegrityError:
+            return jsonify({"error": "Already a member."}), 409
+
+    return jsonify({"success": True}), 201
 
 @app.route('/characters/create', methods=['POST'])
 def create_character():
