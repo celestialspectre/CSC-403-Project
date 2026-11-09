@@ -398,7 +398,7 @@ function displayReview() {
 
     // skills
     const skillsHeading = document.createElement("h3");
-    skillsHeading.textContent = "Selected Skills";
+    skillsHeading.textContent = "Proficiencies";
     review.appendChild(skillsHeading);
 
     addDetail("Skills", selectedSkills.length > 0 ? selectedSkills.join(", ") : "None");
