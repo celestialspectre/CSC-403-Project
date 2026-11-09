@@ -232,6 +232,26 @@ def get_subraces(race_id):
 
     return jsonify(subraces)
 
+@app.route("/api/races/<int:race_id>/bonuses", methods=["GET"])
+def get_race_bonuses(race_id):
+    with connect_db() as conn:
+        cursor = conn.execute("""
+            SELECT a.ability_name AS ability, rab.bonus AS bonus, rab.subrace_id AS subrace_id
+            FROM race_ability_bonuses AS rab
+            JOIN abilities AS a ON rab.ability_id = a.ability_id
+            WHERE rab.race_id = ?
+        """, (race_id,)).fetchall()
+
+        result = [
+            {
+                "ability": row[0],
+                "bonus": row[1],
+                "subrace_id": row[2]
+            } for row in cursor
+        ]
+
+    return jsonify(result)
+
 @app.route("/api/classes")
 def get_classes():
     with connect_db() as conn:
@@ -250,6 +270,26 @@ def get_classes():
         } for row in cursor.fetchall()]
 
     return jsonify(classes)
+
+@app.route("/api/classes/<int:class_id>/skills", methods=["GET"])
+def get_class_skills(class_id):
+    with connect_db() as conn:
+        cursor = conn.execute("""
+            SELECT s.skill_id AS id, s.skill_name AS name, a.ability_name AS ability
+            FROM class_skills AS cs
+            JOIN skills AS s ON cs.skill_id = s.skill_id
+            JOIN abilities AS a ON s.ability_id = a.ability_id
+            WHERE cs.class_id = ?
+            ORDER BY s.skill_name
+        """, (class_id,)).fetchall()
+
+        result = [{
+            "id": row[0],
+            "name": row[1],
+            "ability": row[2]
+        } for row in cursor]
+
+    return jsonify(result)
 
 # @app.route("/send_stats", methods=['POST'])
 # def read_form():
