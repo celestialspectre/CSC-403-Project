@@ -972,78 +972,126 @@ def docs():
         ]
     })
 
-# DICE ROLLER
+# dice helpers
+from dice_features import (
+    parse_expression, exact_distribution, roll_dice,
+    probability_at_least, render_probability_chart
+)
+
+
+# saved rolls table, created in the same sqlite database as the users
+def ensure_saved_rolls_table():
+    with connect_db() as conn:
+        conn.execute('''CREATE TABLE IF NOT EXISTS saved_rolls (
+            roll_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            roll_name TEXT NOT NULL,
+            roll_expression TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )''')
+
+
+ensure_saved_rolls_table()
+
+
+# dice roller supports both og version and custom expressions.
 @app.route('/dice-roller', methods=['GET', 'POST'])
 def dice_roller():
-
-    current_user_id()
-
+    user_id = current_user_id()
     result = None
+    graph = None
+    chance = None
+    expression = ''
+    target = 15
+    mode = 'standard'
+    roll_type = 'normal'
+    dice_type = 'd20'
+    number = 1
+    modifier = 0
 
     if request.method == 'POST':
-        dice_type = request.form.get('dice_type', request.form.get('dice', 'd20')).lower()
+        mode = request.form.get('mode', 'standard')
+        if mode not in ('standard', 'custom'):
+            abort(400, description='Invalid dice mode.')
         roll_type = request.form.get('roll_type', 'normal').lower()
-
-        try:
-            number = int(request.form.get('number', 1))
-            modifier = int(request.form.get('modifier', 0))
-        except (ValueError, TypeError):
-            abort(400, description='Please enter valid numbers.')
-
-        if number < 1 or number > 100:
-            abort(400, description='Number of dice must be between 1 and 100.')
-
-        dice_options = {
-            'd4': 4,
-            'd6': 6,
-            'd8': 8,
-            'd10': 10,
-            'd12': 12,
-            'd20': 20,
-            'd100': 100
-        }
-
-        if dice_type not in dice_options:
-            abort(400, description='Invalid dice selection.')
-
         if roll_type not in ('normal', 'advantage', 'disadvantage'):
             abort(400, description='Invalid roll type.')
+        target = integer_field(request.form, 'target', -10000, 20000, 15)
 
-        import random
-
-        sides = dice_options[dice_type]
-
-        if roll_type == 'normal':
-            rolls = [
-                random.randint(1, sides)
-                for i in range(number)
-            ]
-
-            total = sum(rolls) + modifier
-
+        if mode == 'custom':
+            expression = request.form.get('expression', '').strip()
+            if roll_type != 'normal':
+                abort(400, description='Custom expressions currently use normal rolls only.')
+            try:
+                dice, modifier = parse_expression(expression)
+            except ValueError as error:
+                abort(400, description=str(error))
         else:
-            if dice_type != 'd20' or number != 1:
-                abort(400, description='Advantage and disadvantage require one D20.')
+            dice_type = request.form.get('dice_type', 'd20').lower()
+            options = {'d4': 4, 'd6': 6, 'd8': 8, 'd10': 10, 'd12': 12, 'd20': 20, 'd100': 100}
+            if dice_type not in options:
+                abort(400, description='Invalid dice selection.')
+            number = integer_field(request.form, 'number', 1, 30, 1)
+            modifier = integer_field(request.form, 'modifier', -10000, 10000, 0)
+            dice = [(number, options[dice_type])]
+            if number * (options[dice_type] - 1) > 1500:
+                abort(400, description='Too many possible totals to graph.')
+            expression = f'{number}{dice_type} {modifier:+d}'
 
-            first_roll = random.randint(1, 20)
-            second_roll = random.randint(1, 20)
+        try:
+            probabilities = exact_distribution(dice, modifier, roll_type)
+            groups, total = roll_dice(dice, modifier, roll_type)
+            graph = render_probability_chart(probabilities, target)
+        except ValueError as error:
+            abort(400, description=str(error))
 
-            if roll_type == 'advantage':
-                chosen_roll = max(first_roll, second_roll)
-            else:
-                chosen_roll = min(first_roll, second_roll)
+        chance = probability_at_least(probabilities, target)
+        result = {'dice_type': expression, 'groups': groups, 'modifier': modifier, 'total': total, 'roll_type': roll_type}
 
-            rolls = [first_roll, second_roll]
-            total = chosen_roll + modifier
+    with connect_db() as conn:
+        conn.row_factory = sqlite3.Row
+        saved_rolls = conn.execute(
+            'SELECT roll_id, roll_name, roll_expression FROM saved_rolls '
+            'WHERE user_id=? ORDER BY roll_id DESC', (user_id,)
+        ).fetchall()
 
-        result = {
-            'dice_type': dice_type.upper(),
-            'rolls': rolls,
-            'modifier': modifier,
-            'total': total
-        }
+    return render_template('dice_roller.html', result=result, graph=graph,
+                           chance=chance, target=target, expression=expression,
+                           mode=mode, roll_type=roll_type, dice_type=dice_type,
+                           number=number, modifier=modifier,
+                           saved_rolls=saved_rolls)
 
-    return render_template('dice_roller.html', result=result)
+
+# save a  custom expression for the user
+@app.route('/dice-roller/save', methods=['POST'])
+def save_dice_roll():
+    user_id = current_user_id()
+    name = text_field(request.form, 'roll_name', 80, True)
+    expression = text_field(request.form, 'expression', 160, True)
+    try:
+        parse_expression(expression)
+    except ValueError as error:
+        abort(400, description=str(error))
+    with connect_db() as conn:
+        count = conn.execute('SELECT COUNT(*) FROM saved_rolls WHERE user_id=?',
+                             (user_id,)).fetchone()[0]
+        if count >= 100:
+            abort(400, description='Maximum 100 saved rolls per user.')
+        conn.execute('INSERT INTO saved_rolls (user_id, roll_name, roll_expression) '
+                     'VALUES (?, ?, ?)', (user_id, name, expression))
+    return redirect(url_for('dice_roller'))
+
+
+# delete only a saved roll belonging to the cur user
+@app.route('/dice-roller/delete/<int:roll_id>', methods=['POST'])
+def delete_dice_roll(roll_id):
+    user_id = current_user_id()
+    with connect_db() as conn:
+        cursor = conn.execute('DELETE FROM saved_rolls WHERE roll_id=? AND user_id=?',
+                              (roll_id, user_id))
+        if cursor.rowcount == 0:
+            abort(404, description='Saved roll not found.')
+    return redirect(url_for('dice_roller'))
 
 
 # START FLASK

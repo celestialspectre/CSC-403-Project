@@ -274,3 +274,106 @@ p.muted, .sheet-container a {
     border-radius: 6px; 
 }
 
+
+/* new dice roller shtuff */
+.dice-page { 
+    max-width: 950px; 
+    margin: 25px auto; 
+    box-sizing: border-box; 
+}
+
+.dice-page h2 { 
+    color: #28211a; 
+    margin: 18px 0 12px; 
+    text-align: left; 
+}
+
+.dice-form { 
+    display: grid; 
+    gap: 9px; 
+    max-width: 600px; 
+}
+
+.dice-form label { 
+    color: #28211a; 
+    text-align: left; 
+    font-family: 'Young Serif', serif; 
+    font-size: 15px; 
+}
+
+.dice-form input:not([type="radio"]), .dice-form select { 
+    box-sizing: border-box; 
+    width: 100%; 
+    padding: 9px; 
+}
+
+.dice-form fieldset { 
+    display: flex; 
+    gap: 20px; 
+    flex-wrap: wrap; 
+    border: 1px solid #8e7961; 
+}
+
+.dice-form legend { 
+    color: #28211a; 
+}
+
+.dice-fields { 
+    display: grid; 
+    gap: 8px; 
+}
+
+
+.dice-fields[hidden] { 
+    display: none; 
+}
+
+.dice-form button { 
+    justify-self: start; 
+    padding: 10px 16px; 
+}
+
+.dice-result, .dice-chart-section, .dice-saved { 
+    margin-top: 22px; 
+    padding: 15px; 
+    background: rgba(255,255,255,.72); 
+    border-radius: 7px; 
+}
+
+.dice-chart { 
+    display: block; 
+    width: 100%; 
+    max-width: 100%; 
+    background: #fffaf0; 
+}
+
+.dice-chance { 
+    font-size: 1.15rem; 
+}
+
+.dice-saved-row { 
+    display: flex; 
+    flex-wrap: wrap; 
+    align-items: center; 
+    gap: 12px; 
+    border-bottom: 1px solid #b8a990; 
+    padding: 10px 0; 
+}
+
+.dice-saved-row span { 
+    flex: 1; 
+    min-width: 180px; 
+}
+
+.dice-nav { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 20px; 
+    margin-top: 25px; 
+}
+
+.dice-nav a { 
+    color: #3b241b; 
+    background: #fff1d5; 
+    padding: 9px 12px; 
+}
