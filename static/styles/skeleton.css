@@ -1,44 +1,75 @@
+/*Special font import*/
+@import url('https://fonts.googleapis.com/css2?family=Cedarville+Cursive&family=Tangerine:wght@400;700&family=Young+Serif&family=Zhi+Mang+Xing&display=swap');
+
+.young-serif-regular {
+    font-family: "Young Serif", serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.cedarville-cursive-regular {
+  font-family: "Cedarville Cursive", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.tangerine-regular {
+  font-family: "Tangerine", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.tangerine-bold {
+  font-family: "Tangerine", cursive;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.zhi-mang-xing-regular {
+  font-family: "Zhi Mang Xing", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
+
 /*The code that controls all of the visual flair of the html pages that link to it. most*/
 
 body {
-    background-color: rgb(125, 50, 0);
+    /*background-image: url(../img/leather2.jpg);*/
+    background-image: url(https://t4.ftcdn.net/jpg/04/68/58/21/360_F_468582130_EOx6UIihZrCBKjXG1ePuOIVVBfSvYFGb.jpg);
+    background-color: rgb(46, 18, 0);
+    padding: 24px;
+}
+
+a:visited{
+    color: rgb(90, 0, 0)
+}
+
+#empty_warning {
+    color: white;
+    font-family: "Young Serif", cursive;
+}
+
+a.character-link{
+    font-family: 'Young Serif', serif;
+}
+
+marquee {
+    margin-left: -34px;
+    margin-right: -34px;
 }
 
 h1, h2, h3, form label{
-    color: white; /*color refers to text color*/
+    color: rgb(214, 221, 255); /*color refers to text color*/
     text-align: center;
+    font-family: 'Young Serif'; 
 }
 
 form label{
     font-size:larger;
 }
 
-p {
-    color:gray;
-}
-
-.statsheet{
-    background-color: rgb(225,225,50);
-    justify-self: center;
-    text-align: center;
-    width: 40%;
-    height:auto;
-    border-radius: 24px;
-    padding: 2%;
-    margin-bottom: 5%;
-
-}
-
-.statsheet:hover{ /*special visuals when the mouse hovers over the sheet*/
-    background-color: rgb(234, 234, 60);
-}
-
-div h1{
-    color: black;
-    text-decoration: underline;
-}
-
-div h2, h3{
+div.char_tab h2, h3{
     color: black;
     text-decoration: underline;
     text-align: left;
@@ -46,16 +77,200 @@ div h2, h3{
     margin-top: -12px;
 }
 
-div p{
-    color: black;
-    text-align: left;
-}
-
 .inputRes{ /*.[name] is how you reference classes in an html file. classes are written as class="class_name" in the tag of an element*/
     font-size: 24px;
     color:rgb(0, 0, 82);
 }
 
-form {
-    justify-items: center;
+@keyframes button-focus{
+    100%{scale: 110%; transform: translateY(-2px)}
 }
+
+@keyframes spin{
+    100%{rotate: 360deg}
+}
+
+input {
+    border-radius: 5px;
+}
+
+button {
+    background: linear-gradient(-45deg, #dbdada 0%,  #b1b1b1 100%);
+    border-radius: 7px;
+    border-color: black;
+    border-style:double;
+    border-width: 2px;
+    font-family: 'Young Serif';
+}
+
+button:hover, a.character-link:hover {
+    animation-name: button-focus;
+    animation-duration: .1s;
+    animation-fill-mode: forwards;
+    animation-timing-function: ease-in-out;
+
+}
+
+img:active {
+    animation-name: spin;
+    animation-duration: .3s;
+}
+
+div.login_border {
+    background-color: rgb(23, 24, 25);
+    background-image: url(../img/paper2.jpg);
+    justify-self: center;
+    padding: 20px;
+    margin: 10px;
+    vertical-align: bottom;
+    border-image-source: url(../img/fancy_border.webp);
+    border-image-width: auto;
+    border-image-repeat: fill;
+    border-image-outset: 0.25in;
+    border-image-slice: 750;
+    margin-bottom: 25px;
+}
+
+div.login_border h1{
+    color: rgba(0, 0, 0, 0.529);
+    font-family: "Tangerine", cursive;
+    font-size: 45px;
+    margin-bottom: 2px;
+    margin-top: 10px;
+}
+
+div.login_border p, div.login_border form label {
+    color: rgb(42, 42, 42);
+    font-family: "Zhi Mang Xing", cursive;
+    font-size: x-large;
+}
+
+/* for char sheet */
+.sheet-container {
+    max-width: 1050px; 
+    margin: 24px auto; 
+    padding: 18px; 
+    background-color: #f6ebcf; 
+
+    background-image: url(../img/paper2.jpg);
+    border-color: rgb(226, 226, 226);
+    border-radius: 2px;
+    border-style: dashed;
+    border-width: 2px;
+    height:auto;
+    padding: 2%;
+    margin-bottom: 5%;
+}
+
+.sheet-container:hover {
+    border-style: double;
+}
+
+.sheet-container h1, .sheet-container h2, .sheet-container h3, .sheet-container label{
+    color: #242424; 
+    text-align: left;
+}
+
+p.muted, .sheet-container a {
+    font-family: "Young Serif";
+}
+
+.sheet-container h2, .sheet-container h3 {
+    margin: 10px 0;
+}
+
+.sheet-section {
+    background: rgba(255, 255, 255, 0.581); 
+    padding: 16px; 
+    margin: 16px 0; 
+    border-radius: 15px;
+    /*border-bottom-right-radius: 20px;
+    border-top-right-radius: 30px;*/
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    border-bottom-style:solid;
+    border-width: 5px;
+    border-color: rgb(95, 95, 95);
+}
+
+/* puts fields (ability scores, etc) into columns */
+.sheet-grid {
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); 
+    gap: 12px;
+}
+
+.sheet-container input:not([type=checkbox]), .sheet-container textarea {
+    width: 100%; 
+    box-sizing: border-box; 
+    padding: 7px; 
+    margin: 4px 0;
+}
+
+.sheet-container label {
+    display: block; 
+    font-size: 14px;
+}
+
+.sheet-container .check-label {
+    display: flex; 
+    gap: 8px; 
+    align-items: center;
+}
+
+.sheet-container .check-label input {
+    width: auto;
+}
+
+.sheet-container .row-fields {
+    display: grid; 
+    grid-template-columns: 2fr 1fr 2fr; 
+    gap: 10px; 
+    margin-bottom: 10px;
+}
+
+.sheet-container .resource-fields {
+    grid-template-columns: 2fr 1fr 1fr;
+}
+
+.sheet-container .muted {
+    color: #555;
+}
+
+.sheet-container .save-button {
+    padding: 12px 26px; 
+    font-weight: bold;
+}
+
+.character-link {
+    display:block; 
+    background:antiquewhite; 
+    margin-top:25px; 
+    padding:12px 15px; 
+    width:min(400px,90%); 
+    text-decoration:none; 
+    color:black;
+}
+
+.character-link h2, .character-link h4 {
+    color:black; 
+    text-align:left; 
+    margin:6px 0;
+}
+
+/* for pictures */
+@media (max-width: 600px) {
+    .sheet-container .row-fields {grid-template-columns: 1fr;}
+}
+
+.excel-section textarea { 
+    min-height: 76px; 
+    resize: vertical; 
+}
+
+.sheet-static { 
+    padding: 10px; 
+    border: 1px solid #aaa; 
+    border-radius: 6px; 
+}
+
