@@ -6,6 +6,8 @@ import sqlite3
 # import hashlib
 import os
 import json
+from log_ai import summarize_session
+import requests
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -265,6 +267,17 @@ def current_user_id():
 
     return row[0]
 
+def has_log_permission(conn, party_id, user_id):
+    result = conn.execute(
+        """
+        SELECT 1
+        FROM party_log_roles
+        WHERE party_id = ? AND user_id = ?
+        """,
+        (party_id, user_id)
+    ).fetchone()
+
+    return result is not None
 
 # Checks that a character belongs to the logged-in user
 def owned_character(conn, character_id, user_id):
@@ -500,6 +513,284 @@ def create_party():
         "party_id": party_id,
         "party_name": party_name
     }), 201
+
+
+### ASSIGN LOG ROLE TO PARTY MEMBER
+@app.route(
+    '/party/<int:party_id>/log-role/<int:player_id>',
+    methods=['POST']
+)
+def assign_log_role(party_id, player_id):
+
+    dm_user_id = current_user_id()
+
+    with connect_db() as conn:
+
+        # Verify the user is the party's DM
+        party = conn.execute(
+            """
+            SELECT dm_user_id
+            FROM parties
+            WHERE party_id = ?
+            """,
+            (party_id,)
+        ).fetchone()
+
+        if party is None:
+            abort(404, description="Party not found.")
+
+        if party[0] != dm_user_id:
+            abort(403, description="Only the DM can assign Log roles.")
+
+        # Verify the selected player belongs to the party
+        member = conn.execute(
+            """
+            SELECT 1
+            FROM party_members
+            WHERE party_id = ? AND user_id = ?
+            """,
+            (party_id, player_id)
+        ).fetchone()
+
+        if member is None:
+            abort(404, description="Player is not in this party.")
+
+        # Assign or replace the party's Log player
+        conn.execute(
+            """
+            INSERT INTO party_log_roles (party_id, user_id)
+            VALUES (?, ?)
+            ON CONFLICT(party_id)
+            DO UPDATE SET user_id = excluded.user_id
+            """,
+            (party_id, player_id)
+        )
+
+    return jsonify({
+        "success": True,
+        "party_id": party_id,
+        "log_user_id": player_id
+    })
+
+@app.route('/party/<int:party_id>/logs/save', methods=['POST'])
+def save_party_log(party_id):
+    user_id = current_user_id()
+
+    session_number = request.form.get('session_number', type=int)
+    session_title = request.form.get('session_title', '').strip()
+    session_notes = request.form.get('session_notes', '').strip()
+
+    if session_number is None or session_number < 1:
+        abort(400, description="Invalid session number.")
+
+    if not session_title:
+        abort(400, description="Session title is required.")
+
+    with connect_db() as conn:
+
+        # Only the assigned Log player can save notes
+        if not has_log_permission(conn, party_id, user_id):
+            abort(403, description="You do not have the Log role.")
+
+        # Create a new session log, or update its draft
+        existing = conn.execute(
+            """
+            SELECT log_id, status
+            FROM party_logs
+            WHERE party_id = ? AND session_number = ?
+            """,
+            (party_id, session_number)
+        ).fetchone()
+
+        if existing:
+            if existing[1] == 'published':
+                abort(403, description="Published logs cannot be edited.")
+
+            conn.execute(
+                """
+                UPDATE party_logs
+                SET session_title = ?,
+                    session_notes = ?,
+                    ai_summary = NULL,
+                    status = 'draft',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE log_id = ?
+                """,
+                (session_title, session_notes, existing[0])
+            )
+            log_id = existing[0]
+
+        else:
+            cursor = conn.execute(
+                """
+                INSERT INTO party_logs
+                (party_id, author_id, session_number,
+                 session_title, session_notes)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (party_id, user_id, session_number,
+                 session_title, session_notes)
+            )
+            log_id = cursor.lastrowid
+
+    return jsonify({
+        "success": True,
+        "log_id": log_id,
+        "party_id": party_id,
+        "session_number": session_number,
+        "status": "draft"
+    })
+
+
+###ORGANIZES PARTY LOG SESSIONS
+@app.route('/party/<int:party_id>/logs', methods=['GET'])
+def get_party_logs(party_id):
+    user_id = current_user_id()
+
+    with connect_db() as conn:
+
+        # Verify the user belongs to this party
+        member = conn.execute(
+            """
+            SELECT 1
+            FROM party_members
+            WHERE party_id = ? AND user_id = ?
+            """,
+            (party_id, user_id)
+        ).fetchone()
+
+        if member is None:
+            abort(403, description="You are not a party member.")
+
+        # Check whether this user is the Log player
+        can_edit = has_log_permission(conn, party_id, user_id)
+
+        if can_edit:
+            # Log player can see drafts and original notes
+            logs = conn.execute(
+                """
+                SELECT log_id, session_number,
+                       session_title, session_notes,
+                       ai_summary, status,
+                       created_at, updated_at
+                FROM party_logs
+                WHERE party_id = ?
+                ORDER BY session_number DESC
+                """,
+                (party_id,)
+            ).fetchall()
+
+        else:
+            # Other party members see published summaries only
+            logs = conn.execute(
+                """
+                SELECT log_id, session_number, session_title, ai_summary,
+                status, created_at, updated_at
+                FROM party_logs
+                WHERE party_id = ?
+                AND status = 'published'
+                ORDER BY session_number DESC
+                """,
+                (party_id,)
+            ).fetchall()
+
+    if can_edit:
+        result = [
+            {
+                "log_id": log[0],
+                "session_number": log[1],
+                "session_title": log[2],
+                "session_notes": log[3],
+                "ai_summary": log[4],
+                "status": log[5],
+                "created_at": log[6],
+                "updated_at": log[7]
+            }
+            for log in logs
+        ]
+    else:
+        result = [
+            {
+                "log_id": log[0],
+                "session_number": log[1],
+                "session_title": log[2],
+                "ai_summary": log[3],
+                "status": log[4],
+                "created_at": log[5],
+                "updated_at": log[6]
+            }
+            for log in logs
+        ]
+
+    return jsonify({
+        "party_id": party_id,
+        "can_edit": can_edit,
+        "logs": result
+    })
+###LOG SUMMARY ROUTE
+@app.route(
+    '/party/<int:party_id>/logs/<int:log_id>/summarize',
+    methods=['POST']
+)
+def generate_party_log_summary(party_id, log_id):
+    user_id = current_user_id()
+
+    with connect_db() as conn:
+        if not has_log_permission(conn, party_id, user_id):
+            abort(403, description="Log role required.")
+
+        log = conn.execute(
+            """
+            SELECT session_notes, status
+            FROM party_logs
+            WHERE party_id = ? AND log_id = ?
+            """,
+            (party_id, log_id)
+        ).fetchone()
+
+        if log is None:
+            abort(404, description="Log not found.")
+
+        if log[1] == "published":
+            abort(403, description="Log is already published.")
+
+        notes = log[0]
+
+        if not notes.strip():
+            abort(400, description="No session notes to summarize.")
+
+    try:
+        summary = summarize_session(notes)
+    except (requests.RequestException, ValueError):
+        app.logger.exception("Ollama summarization failed")
+        abort(503, description="Could not generate AI summary.")
+
+    with connect_db() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE party_logs
+            SET ai_summary = ?,
+                status = 'review',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE log_id = ?
+              AND party_id = ?
+              AND status != 'published'
+              AND session_notes = ?
+            """,
+            (summary, log_id, party_id, notes)
+        )
+
+        if cursor.rowcount == 0:
+            abort(409, description="Log changed during summarization.")
+
+    return jsonify({
+        "success": True,
+        "log_id": log_id,
+        "status": "review",
+        "ai_summary": summary
+    })
+
+
 
 
 # REMOVE PLAYER FROM PARTY
