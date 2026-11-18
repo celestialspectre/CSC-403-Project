@@ -12,8 +12,10 @@
             <h1>Campaign Log</h1>
             <form method="post">
                 <button style="justify-self: left; margin-right: 290px;" formaction="/main">Main Menu</button>
-                <button style="justify-self: right; margin-left: 290px;" formaction="/log/save">Save Notes</button>
-                <textarea name="log_text" style="width: 90%; height: 500px; padding: 5px; margin-top: 10px; margin-bottom: 10px;">{{box_contents}}</textarea>
+                <button style="justify-self: center;" formaction="{{ url_for('generate_party_log_summary') }}">Summarize</button>
+                <button style="justify-self: right; margin-left: 290px;" formaction="{{ url_for('save_party_log') }}">Save Notes</button>
+                <textarea name="session_title" style="width: 90%; margin-top: 10px;" placeholder="Title" >{{ session_title }}</textarea>
+                <textarea name="log_text" style="width: 90%; height: 500px; padding: 5px; margin-top: 10px; margin-bottom: 10px;" placeholder="Type your notes here!">{{ log_contents }}</textarea>
             </form>
         </div>
     </center>

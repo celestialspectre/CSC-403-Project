@@ -744,7 +744,7 @@ def generate_party_log_summary(party_id, log_id):
 
         log = conn.execute(
             """
-            SELECT session_notes, status
+            SELECT session_notes, status, session_title
             FROM party_logs
             WHERE party_id = ? AND log_id = ?
             """,
@@ -786,12 +786,39 @@ def generate_party_log_summary(party_id, log_id):
         if cursor.rowcount == 0:
             abort(409, description="Log changed during summarization.")
 
-    return jsonify({
-        "success": True,
-        "log_id": log_id,
-        "status": "review",
-        "ai_summary": summary
-    })
+    return render_template("log.html", log_contents=summary, session_title=log[2]),200
+
+#campaign log log
+@app.route('/log', methods=['GET'])
+def log():
+    user_id = current_user_id()
+
+    with connect_db() as conn:
+        campaign_id = personal_party_id(conn, user_id)
+
+        #select log from user log table and save as content
+        contents = "pull from db"
+        ...
+    return render_template('log.html', box_contents=contents),200
+
+
+
+@app.route('/log/save', methods=['GET', 'POST'])
+def log_save():
+    new_contents = ''
+    user_id = current_user_id()
+    if request.method == 'POST':
+        new_contents = request.form.get('log_text')
+        session_title = request.form.get('session_title')
+
+        with connect_db() as conn:
+            #set entry in db to new_contents
+            campaign_id = personal_party_id(conn, user_id)
+            conn.execute(
+                "insert into campaign_logs (author_id, campaign_id, session_notes, session_title) values (?, ?, ?, ?)",
+                (user_id, campaign_id, new_contents, session_title)
+            )
+    return redirect(url_for('log', box_contents=new_contents))
 
 
 
@@ -1143,6 +1170,7 @@ def save_character(character_id):
                WHERE character_id=?''',
             (
                 *(text_values[k] for k in fields),
+
                 max_hp,
                 gold,
                 json.dumps(skill_profs),
@@ -1241,27 +1269,6 @@ def character():
         data=data
     ), 200
 
-#campaign log log
-@app.route('/log', methods=['GET'])
-def log():
-    with connect_db() as conn:
-        #select log from user log table and save as content
-        contents = "pull from db"
-        ...
-    return render_template('log.html', box_contents=contents),200
-
-
-
-@app.route('/log/save', methods=['GET', 'POST'])
-def log_save():
-    new_contents = ''
-    if request.method == 'POST':
-        new_contents = request.form.get('log_text')
-
-        with connect_db() as conn:
-            #set entry in db to new_contents
-            ...
-    return redirect(url_for('log', box_contents=new_contents))
 
 # DOCUMENTATION
 @app.route('/docs', methods=['GET'])
