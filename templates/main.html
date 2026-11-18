@@ -17,16 +17,7 @@
             </form>
     
 <form action="{{ url_for('parties_page') }}" method="GET">
-    <button type="submit" style="
-        width: 180px;
-        height: 55px;
-        font-size: 18px;
-        font-weight: bold;
-        cursor: pointer;
-        border-radius: 8px;
-    ">
-        Party Management
-    </button>
+    
 </form>
 
 
@@ -47,7 +38,8 @@
                 <button type="submit" style="height: 65px; width: 200px; font-size: 20px;" formaction="{{ url_for('get_party_logs', party_id=1) }}">Campaign Log</button>
                 <!--<button type="submit" style="height: 65px; width: 200px; font-size: 20px;" formaction="/spells">Spells</button>-->
                 <button type="submit" style="height: 65px; width: 200px; font-size: 20px;" formaction="/conditions">Conditions</button>
+                <button type="submit" style="height: 65px; width: 200px; font-size: 20px;" formaction ="{{ url_for('parties_page') }}" method="GET">Party Management</button>
             </form>
         </div>
     </div>
-</body>
+</body> 

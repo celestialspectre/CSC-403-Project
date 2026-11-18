@@ -13,7 +13,8 @@ import ssl
 from email.message import EmailMessage
 from dotenv import load_dotenv
 from dice_roll import roll_dice
-from flask import Flask, render_template, request, jsonify, abort, redirect, url_for, sessionfrom log_ai import summarize_session
+from flask import Flask, render_template, request, jsonify, abort, redirect, url_for, session
+from log_ai import summarize_session
 from api_helper import parse_description
 import requests
 
@@ -1370,34 +1371,6 @@ def log_save():
             )
             conn.commit()
     return redirect(url_for('log', box_contents=new_contents))
-
-
-
-
-# REMOVE PLAYER FROM PARTY
-@app.route('/party/<int:party_id>/remove/<int:player_id>', methods=['POST'])
-def dm_remove_player(party_id, player_id):
-
-    dm_user_id = current_user_id()
-
-    try:
-        result = db_remove_player(
-            dm_user_id,
-            party_id,
-            player_id
-        )
-
-        return jsonify({
-            "success": True,
-            "message": "Player successfully removed.",
-            "response_seconds": result["response_seconds"]
-        })
-
-    except PermissionError as error:
-        return jsonify({"error": str(error)}), 403
-
-    except ValueError as error:
-        return jsonify({"error": str(error)}), 404
 
 
 # JOIN PARTY
