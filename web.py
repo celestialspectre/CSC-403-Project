@@ -18,7 +18,9 @@ from database.database import (
     create_sheet_tables,
     add_excel_sheet_fields,
     view_player_page as db_view_player_page,
-    remove_player as db_remove_player
+    remove_player as db_remove_player,
+    make_spell_table,
+    add_spells
     # get_user_characters as db_get_user_characters
 )
 
@@ -31,6 +33,11 @@ app.secret_key = os.environ.get('SECRET_KEY', os.urandom(32))
 create_database()
 create_sheet_tables()
 add_excel_sheet_fields()
+
+#more stuff for the spell list
+#make_spell_table()
+#add_spells()
+
 
 # Add password storage to existing databases
 with connect_db() as conn:
@@ -1294,8 +1301,45 @@ def conditions():
         dict["description"] = parse_description(dict["description"])
         dictList += [dict]
 
-    return render_template("statuses.html", conditions=dictList)
+    return render_template("statuses.html", conditions=dictList), 200
 
+@app.route('/spells', methods=['GET', 'POST'])
+def spells_pg():
+    user_class = request.form.get('sel_class')
+    print(user_class)
+    return render_template("spells.html"), 200
+
+@app.route('/spells/next', methods=['GET', 'POST'])
+def filter_spells():
+    spells = []
+    user_class = request.form.get('sel_class')
+
+    append = f"classes/{user_class}/spells"
+    payload = {}
+    headers = {
+        'Accept': 'application/json'
+    }
+
+    response = requests.request("GET", url+append, headers=headers, data=payload)
+
+    dict = json.loads(response.text)
+
+    class_spells = []
+    for result in dict["results"]:
+        class_spells.append(result["index"])
+
+    for spell in class_spells:
+        with connect_db() as conn:
+            curr_spell = conn.execute(
+                """
+                select name, level, range, description
+                from spells
+                where spell_index = ?
+                """,
+                (spell)
+            ).fetchone()
+            spells.append(curr_spell)
+    return render_template("spells.html", spells=spells), 200
 
 
 

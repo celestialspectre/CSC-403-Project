@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+
+<head>
+    <title>Spells</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}" />
+</head>
+
+<body>
+    <form>
+        <select name="sel_class">
+            <option value="" disabled selected>Select Race</option>
+            <option value="Dragonborn">Dragonborn</option>
+            <option value="Dwarf">Dwarf</option>
+            <option value="Elf">Elf</option>
+            <option value="Gnome">Gnome</option>
+            <option value="Goliath">Goliath</option>
+            <option value="Half-Elf">Half-Elf</option>
+            <option value="Half-Orc">Half-Orc</option>
+            <option value="Halfling">Halfling</option>
+            <option value="Human">Human</option>
+            <option value="Orc">Orc</option>
+            <option value="Tiefling">Tiefling</option>
+            <option value="Aasimar">Aasimar</option>
+            <option value="Tabaxi">Tabaxi</option>
+            <option value="Genasi">Genasi</option>
+            <option value="Firbolg">Firbolg</option>
+            <option value="Triton">Triton</option>
+            <option value="Goblin">Goblin</option>
+            <option value="Kobold">Kobold</option>
+            <option value="Kenku">Kenku</option>
+            <option value="Tortle">Tortle</option>
+        </select>
+        <button formaction="{{ url_for('filter_spells', user_class=sel_class)}}">Submit</button>
+    </form>
+
+    {%for spell in spells%}
+    <div class="status-entry">
+        <h2 class="info" style="text-align: left;">{{spell[0]}} — lvl {{spell[1]}}</h2>
+        <h3>Range: {{spell[2]}}</h3>
+        <div class="line" style="background-color: rgb(177, 177, 177); height: 2px; width: 90%; margin-top: -15px; margin-bottom: 10px;"></div>
+        <!--<h3>Materials: {{spell[4]}}</h3>-->
+        <p>{{ spell[3] }}</p>
+    </div>
+    <br />
+    {%endfor%}
+
+
+</body>

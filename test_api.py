@@ -9,7 +9,7 @@ classes = []
 url = "https://www.dnd5eapi.co/api/2024/" #api base url
 data = '{"query"}'
 
-append = "classes/bard/spells"
+append = "spells"
 
 
 payload = {}
@@ -22,16 +22,23 @@ response = requests.request("GET", url+append, headers=headers, data=payload) #q
 
 
 dict = json.loads(response.text) #splits json output into a dictinoary 
-#print(dict)
-print(dict["results"][0]["index"])
+#print(dict) 
+spell_list = []
+for result in dict["results"]:
+    spell_list.append(result["index"])
 
-for i in range(0,1):
-    spell_name = dict["results"][i]["index"]
-    append=f"spells/{spell_name}"
-    response = requests.request("GET", url+append, headers=headers, data=payload) #queries the api. "conditions/blinded gives the output for the blinded condition"
-    dict2 = json.loads(response.text)
-    print(f"{dict2["name"]} —— lvl {dict2["level"]}")
-    print("-----")
-    print(f"Range: {dict2["range"]} —— Materials: {dict2["material"].capitalize()}")
-    print(f"{dict2["description"].strip().replace("\n  ", " ")}")
-    print("========================")
+    
+#print(dict["results"][0]["index"])
+print(spell_list)
+
+#for i in range(0,1):
+#    spell_name = dict["results"][i]["index"]
+#    append=f"spells/{spell_name}"
+#    response = requests.request("GET", url+append, headers=headers, data=payload) #queries the api. "conditions/blinded gives the output for the blinded condition"
+#    dict2 = json.loads(response.text)
+#    print(f"{dict2["name"]} —— lvl {dict2["level"]}")
+#    print("-----")
+#    print(f"Range: {dict2["range"]} —— Duration: {dict2["duration"]}")
+#    print(f"Materials: {dict2["material"].capitalize()}")
+#    print(f"{dict2["description"].strip().replace("\n  ", " ")}")
+#    print("========================")

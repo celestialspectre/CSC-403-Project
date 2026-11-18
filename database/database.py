@@ -501,6 +501,49 @@ def add_excel_sheet_fields():
         if 'excel_fields' not in columns:
             conn.execute("ALTER TABLE character_details ADD COLUMN excel_fields TEXT NOT NULL DEFAULT '{}'")
 
+#an extra table to store the spells for indexing (since pulling all of them from the api will take ten years)
+def make_spell_table():
+    with connect_db() as conn:
+        conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS spells (
+            spell_index text not null primary key,
+            name text not null,
+            level integer not null,
+            range text not null,
+            materials text,
+            description text not null
+        );
+        """)
+
+#populates spell table with every spell on record
+def add_spells():
+    import json
+    import requests
+    from api_helper import SPELLS
+    url = "https://www.dnd5eapi.co/api/2024/"
+
+    with connect_db() as conn:
+        for spell in SPELLS:
+            append=f"spells/{spell}"
+            payload = {}
+            headers = {
+                'Accept': 'application/json'
+            }
+
+            response = requests.request("GET", url+append, headers=headers, data=payload)
+            resp_dict = json.loads(response.text)
+            try:
+                conn.execute(
+                    """insert into spells if not exists
+                    (spell_index, name, level, range, description) values (?, ?, ?, ?, ?)""", (resp_dict["index"], resp_dict["name"], resp_dict["level"], resp_dict["range"], resp_dict["description"])
+                )
+            except:
+                ...
+        conn.commit()
+
+
+
 if __name__ == "__main__":
     create_database()
     create_sheet_tables()
