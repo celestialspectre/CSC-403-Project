@@ -298,3 +298,16 @@ textarea, input, select {
     font-family: 'Zhi Mang Xing'; 
     font-size: larger;
 }
+
+div.status-entry, div.spell-entry {
+    color: white; 
+    font-family: 'Young Serif'; 
+    justify-self: center; 
+    width: 70%;
+    background-image: url(../img/leather3.jpg);
+    border-radius: 3px;
+    border-style:inset;
+    border-color: #2c2c2c;
+    padding-bottom: 20px;
+    padding-left: 34px;
+}
