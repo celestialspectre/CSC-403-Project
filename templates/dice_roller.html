@@ -7,12 +7,9 @@
 </head>
 
 <body>
-    <center>
-        <div id="triangle-down" class="border-decor"></div>
-
-        <div class="login_border">
-            <h1>Welcome to the D&D Character Hub!</h1>
-            <h2>Dice Roller</h2>
+    <center>    
+        <div class="login_border" style="width: 30%;">
+            <h1 style="color:rgb(49, 49, 49)">Dice Roller</h1>
 
             <!-- Dice Roller Form -->
             <form action="{{ url_for('dice_roller') }}" method="POST">
@@ -60,27 +57,25 @@
 
                 <button type="submit">Roll Dice</button>
 
-                <p>*Note: Advantage and Disadvantage require one D20.</p>
-
             </form>
 
             <!-- Display Dice Results -->
             {% if result %}
-                <div class="character">
+                <div class="dice_roll" style="font-family: Young Serif;">
                     <h2>Roll Results</h2>
 
                     <p>
-                        <strong>Dice:</strong>
+                        Dice:
                         {{ result["dice_type"] }}
                     </p>
 
                     <p>
-                        <strong>Individual Rolls:</strong>
+                        Individual Rolls:
                         {{ result["rolls"] }}
                     </p>
 
                     <p>
-                        <strong>Modifier:</strong>
+                        Modifier:
                         {{ result["modifier"] }}
                     </p>
 
@@ -89,20 +84,20 @@
             {% endif %}
 
             <!-- Navigation Buttons -->
-            <form action="{{ url_for('character_creator') }}" method="GET">
+            <form action="{{ url_for('character') }}" method="GET">
                 <button type="submit">Character Creator</button>
             </form>
-            
+            <br />
             <form action="{{ url_for('main_menu') }}" method="GET">
                 <button type="submit">Return to Main Menu</button>
             </form>
 
         </div>
 
-        <marquee>
+        <!--<marquee>
             <img src="{{ url_for('static', filename='img/dnd.png') }}"
                  style="width: 10%; height: auto;" />
-        </marquee>
+        </marquee>-->
 
         <div id="triangle-up" class="border-decor"></div>
     </center>

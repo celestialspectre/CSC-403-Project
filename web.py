@@ -308,6 +308,9 @@ def personal_party_id(conn, user_id):
 
 # LOGIN
 @app.route('/')
+def empty():
+    return redirect(url_for('login'))
+
 @app.route('/login', methods=['GET', 'POST'], endpoint='login')
 def index():
 
@@ -947,6 +950,27 @@ def character():
         data=data
     ), 200
 
+#campaign log log
+@app.route('/log', methods=['GET'])
+def log():
+    with connect_db() as conn:
+        #select log from user log table and save as content
+        contents = "pull from db"
+        ...
+    return render_template('log.html', box_contents=contents),200
+
+
+
+@app.route('/log/save', methods=['GET', 'POST'])
+def log_save():
+    new_contents = ''
+    if request.method == 'POST':
+        new_contents = request.form.get('log_text')
+
+        with connect_db() as conn:
+            #set entry in db to new_contents
+            ...
+    return redirect(url_for('log', box_contents=new_contents))
 
 # DOCUMENTATION
 @app.route('/docs', methods=['GET'])

@@ -8,15 +8,14 @@
 
 <body>
     <center>
-        <div id="triangle-down" class="border-decor"></div>
 
         <div class="login_border">
             <h1>Welcome to the D&D Character Hub!</h1>
-            <h2>Create an Account</h2>
+            <h1 style="color:rgb(49, 49, 49); font-size: 37px;">Create an Account</h1>
 
             <!-- Displays registration errors -->
             {% if error %}
-                <p class="message">{{ error }}</p>
+                <p class="message" style="color: red;">{{ error }}</p>
             {% endif %}
 
             <form action="{{ url_for('register') }}" method="POST">
@@ -44,14 +43,16 @@
                 <br />
 
                 <button type="submit">Register</button>
-
-                <p>*Note: Password must be at least 8 characters long.</p>
-
             </form>
+
+            <br />
 
             <form action="{{ url_for('login') }}" method="GET">
                 <button type="submit">Return to Login</button>
             </form>
+
+            
+            <p>*Note: Password must be at least 8 characters long and contain 1 special character</p>
         </div>
 
         <marquee>
@@ -59,7 +60,6 @@
                  style="width: 10%; height: auto;" />
         </marquee>
 
-        <div id="triangle-up" class="border-decor"></div>
     </center>
 </body>
 </html>

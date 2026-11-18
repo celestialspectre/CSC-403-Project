@@ -39,24 +39,22 @@
                 />
                 <br />
                 <br />
-
+                
                 <button type="submit">Login</button>
-
-                <p>
-                    *Note: Password must be at least 8 characters long.
-                </p>
-
+            </form>
+            <br />
+            
+            <form action="{{ url_for('register') }}" method="GET">
+                <button type="submit">Create Account</button>
             </form>
 
-            
+            <p>*Note: Password must be at least 8 characters long and contain 1 special character.</p>
+
             {% if error %}
                 <p style="color: red;">{{ error }}</p>
             {% endif %}
 
             
-            <form action="{{ url_for('register') }}" method="GET">
-                <button type="submit">Register</button>
-            </form>
         </div>
 
         <marquee>

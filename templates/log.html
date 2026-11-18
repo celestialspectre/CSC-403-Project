@@ -1,0 +1,21 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Campaign Log</title>
+    <link rel="stylesheet" href="../static/styles/skeleton.css" />
+</head>
+
+<body>
+    <center>
+        <div class="login_border" style="width: 60%; height: auto;">
+            <h1>Campaign Log</h1>
+            <form method="post">
+                <button style="justify-self: left; margin-right: 290px;" formaction="/main">Main Menu</button>
+                <button style="justify-self: right; margin-left: 290px;" formaction="/log/save">Save Notes</button>
+                <textarea name="log_text" style="width: 90%; height: 500px; padding: 5px; margin-top: 10px; margin-bottom: 10px;">{{box_contents}}</textarea>
+            </form>
+        </div>
+    </center>
+</body>
+</html>
