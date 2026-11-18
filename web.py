@@ -1,12 +1,19 @@
 
 # flask setup instructions: https://flask.palletsprojects.com/en/stable/installation/#install-flask
 
-from flask import *
 import sqlite3
 # import hashlib
 import os
 import json
-from log_ai import summarize_session
+import secrets
+import hashlib
+import time
+import smtplib
+import ssl
+from email.message import EmailMessage
+from dotenv import load_dotenv
+from dice_roll import roll_dice
+from flask import Flask, render_template, request, jsonify, abort, redirect, url_for, sessionfrom log_ai import summarize_session
 from api_helper import parse_description
 import requests
 
@@ -24,10 +31,16 @@ from database.database import (
     # get_user_characters as db_get_user_characters
 )
 
+load_dotenv()
+
 app = Flask(__name__)
 
 # temp session verification
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(32))
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax'
+)
 
 # temp stuff for character sheet
 create_database()
@@ -50,6 +63,392 @@ with connect_db() as conn:
         conn.execute(
             "ALTER TABLE users ADD COLUMN password_hash TEXT"
         )
+        
+# PASSWORD RECOVERY DATABASE
+
+with connect_db() as conn:
+
+    user_columns = {
+        row[1]
+        for row in conn.execute(
+            'PRAGMA table_info(users)'
+        )
+    }
+
+    if 'email' not in user_columns:
+        conn.execute(
+            'ALTER TABLE users ADD COLUMN email TEXT'
+        )
+
+    conn.execute(
+        '''CREATE UNIQUE INDEX IF NOT EXISTS
+           idx_users_email_unique
+           ON users(email COLLATE NOCASE)
+           WHERE email IS NOT NULL'''
+    )
+
+    conn.execute(
+        '''CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            token_hash TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            used_at INTEGER,
+            FOREIGN KEY(user_id) REFERENCES users(user_id)
+        )'''
+    )
+
+    conn.execute(
+        '''CREATE INDEX IF NOT EXISTS idx_reset_user
+           ON password_reset_tokens(user_id)'''
+    )
+
+
+RESET_LIFETIME_SECONDS = 15 * 60
+RESET_REQUEST_COOLDOWN = 60
+
+
+# CSRF PROTECTION
+
+def recovery_csrf_token():
+
+    if 'recovery_csrf' not in session:
+        session['recovery_csrf'] = secrets.token_urlsafe(32)
+
+    return session['recovery_csrf']
+
+
+def check_recovery_csrf():
+
+    submitted = request.form.get('csrf_token', '')
+    expected = session.get('recovery_csrf', '')
+
+    if not expected or not secrets.compare_digest(
+        submitted, expected
+    ):
+        abort(
+            400,
+            description='Invalid form token. Reload the page and try again.'
+        )
+
+
+# SEND PASSWORD RESET LINK
+
+def send_reset_link(email, link):
+
+    # TEMPORARY LOCAL TESTING
+    # Prints the reset link instead of sending an email.
+
+    print(
+        "\n===================================="
+        "\nPASSWORD RESET REQUEST"
+        "\nEMAIL: " + email +
+        "\nRESET LINK: " + link +
+        "\n====================================\n",
+        flush=True
+    )
+
+
+# --------------------------------------------------
+# FIND RESET TOKEN
+# --------------------------------------------------
+
+def reset_token_record(conn, token):
+
+    if len(token) > 200 or len(token) < 32:
+        return None
+
+    digest = hashlib.sha256(
+        token.encode('utf-8')
+    ).hexdigest()
+
+    return conn.execute(
+        '''SELECT token_hash, user_id, expires_at, used_at
+           FROM password_reset_tokens
+           WHERE token_hash = ?''',
+        (digest,)
+    ).fetchone()
+
+
+# --------------------------------------------------
+# FORGOT PASSWORD ROUTE
+# --------------------------------------------------
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+
+# --------------------------------------------------
+# FORGOT PASSWORD ROUTE
+# --------------------------------------------------
+def forgot_password():
+
+    print("FORGOT PASSWORD ROUTE REACHED", flush=True)
+    print("REQUEST METHOD:", request.method, flush=True)
+
+    if request.method == 'POST':
+
+        print("PASSWORD RESET FORM SUBMITTED", flush=True)
+
+        check_recovery_csrf()
+
+        email = request.form.get(
+            'email', ''
+        ).strip().lower()
+
+        print("EMAIL RECEIVED:", email, flush=True)
+
+        if len(email) > 254 or '@' not in email:
+
+            print("INVALID EMAIL FORMAT", flush=True)
+
+            return render_template(
+                'forgot_password.html',
+                csrf_token=recovery_csrf_token(),
+                error='Enter a valid email address.'
+            ), 400
+
+        now = int(time.time())
+
+        with connect_db() as conn:
+
+            user = conn.execute(
+                '''SELECT user_id FROM users
+                   WHERE email = ? COLLATE NOCASE''',
+                (email,)
+            ).fetchone()
+
+            if user:
+
+                print("REGISTERED ACCOUNT FOUND", flush=True)
+
+                last = conn.execute(
+                    '''SELECT MAX(created_at)
+                       FROM password_reset_tokens
+                       WHERE user_id = ?''',
+                    (user[0],)
+                ).fetchone()[0]
+
+                if (
+                    last is None
+                    or now - last >= RESET_REQUEST_COOLDOWN
+                ):
+
+                    print(
+                        "GENERATING PASSWORD RESET TOKEN",
+                        flush=True
+                    )
+
+                    token = secrets.token_urlsafe(32)
+
+                    digest = hashlib.sha256(
+                        token.encode('utf-8')
+                    ).hexdigest()
+
+                    conn.execute(
+                        '''INSERT INTO password_reset_tokens
+                           (token_hash, user_id, created_at, expires_at)
+                           VALUES (?, ?, ?, ?)''',
+                        (
+                            digest,
+                            user[0],
+                            now,
+                            now + RESET_LIFETIME_SECONDS
+                        )
+                    )
+
+                    base = os.getenv(
+                        'APP_BASE_URL',
+                        'http://127.0.0.1:5000'
+                    ).rstrip('/')
+
+                    link = base + url_for(
+                        'reset_password',
+                        token=token
+                    )
+
+                    # LOCAL TESTING ONLY
+                    print(
+                        "\n====================================\n"
+                        "PASSWORD RESET LINK:\n"
+                        + link +
+                        "\n====================================\n",
+                        flush=True
+                    )
+
+                else:
+
+                    print(
+                        "RESET REQUEST BLOCKED BY COOLDOWN",
+                        flush=True
+                    )
+
+            else:
+
+                print(
+                    "NO REGISTERED ACCOUNT FOUND FOR EMAIL",
+                    flush=True
+                )
+
+        return render_template(
+            'forgot_password.html',
+            csrf_token=recovery_csrf_token(),
+            message=(
+                'If an account uses that email, '
+                'a reset link will be sent.'
+            )
+        )
+
+    return render_template(
+        'forgot_password.html',
+        csrf_token=recovery_csrf_token()
+    )
+
+
+
+# RESET PASSWORD ROUTE
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+
+    with connect_db() as conn:
+
+        record = reset_token_record(conn, token)
+
+        valid = bool(
+            record
+            and record[3] is None
+            and record[2] > int(time.time())
+        )
+
+    if not valid:
+
+        return render_template(
+            'reset_password.html',
+            valid=False
+        ), 400
+
+    if request.method == 'POST':
+
+        check_recovery_csrf()
+
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm_password', '')
+
+        if len(password) < 8 or len(password) > 1024:
+
+            return render_template(
+                'reset_password.html',
+                valid=True,
+                token=token,
+                csrf_token=recovery_csrf_token(),
+                error='Password must be at least 8 characters.'
+            ), 400
+
+        if password != confirm:
+
+            return render_template(
+                'reset_password.html',
+                valid=True,
+                token=token,
+                csrf_token=recovery_csrf_token(),
+                error='Passwords do not match.'
+            ), 400
+
+        now = int(time.time())
+
+        digest = hashlib.sha256(
+            token.encode()
+        ).hexdigest()
+
+        with connect_db() as conn:
+
+            cursor = conn.execute(
+                '''UPDATE password_reset_tokens
+                   SET used_at = ?
+                   WHERE token_hash = ?
+                   AND used_at IS NULL
+                   AND expires_at > ?''',
+                (now, digest, now)
+            )
+
+            if cursor.rowcount != 1:
+
+                return render_template(
+                    'reset_password.html',
+                    valid=False
+                ), 400
+
+            conn.execute(
+                '''UPDATE users
+                   SET password_hash = ?
+                   WHERE user_id = ?''',
+                (
+                    generate_password_hash(password),
+                    record[1]
+                )
+            )
+
+            conn.execute(
+                '''UPDATE password_reset_tokens
+                   SET used_at = ?
+                   WHERE user_id = ?
+                   AND used_at IS NULL''',
+                (now, record[1])
+            )
+
+        session.clear()
+
+        return redirect(
+            url_for('login', reset='success')
+        )
+
+    return render_template(
+        'reset_password.html',
+        valid=True,
+        token=token,
+        csrf_token=recovery_csrf_token()
+    )
+
+
+
+# Add unique access codes to parties.
+# Existing parties receive codes automatically.
+
+with connect_db() as conn:
+    columns = [
+        row[1]
+        for row in conn.execute("PRAGMA table_info(parties)")
+    ]
+
+    if "access_code" not in columns:
+        conn.execute(
+            "ALTER TABLE parties ADD COLUMN access_code TEXT"
+        )
+
+    existing_codes = {
+        row[0]
+        for row in conn.execute(
+            "SELECT access_code FROM parties WHERE access_code IS NOT NULL"
+        )
+    }
+
+    parties_without_codes = conn.execute(
+        """SELECT party_id FROM parties
+           WHERE access_code IS NULL OR access_code = ''"""
+    ).fetchall()
+
+    for party in parties_without_codes:
+        code = secrets.token_hex(4).upper()
+
+        while code in existing_codes:
+            code = secrets.token_hex(4).upper()
+
+        conn.execute(
+            "UPDATE parties SET access_code = ? WHERE party_id = ?",
+            (code, party[0])
+        )
+
+        existing_codes.add(code)
+
 
 
 # Character abilities
@@ -314,6 +713,10 @@ def personal_party_id(conn, user_id):
     ).fetchone()
 
     if row:
+        conn.execute(
+            'INSERT OR IGNORE INTO party_members (party_id, user_id) VALUES (?, ?)',
+            (row[0], user_id)
+        )
         return row[0]
 
     cursor = conn.execute(
@@ -331,7 +734,10 @@ def personal_party_id(conn, user_id):
     return party_id
 
 
+
+
 # LOGIN
+
 @app.route('/')
 def empty():
     return redirect(url_for('login'))
@@ -340,24 +746,38 @@ def empty():
 def index():
 
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+
+        username = request.form.get(
+            'username', ''
+        ).strip()
+
         password = request.form.get('password', '')
 
         if not username or not password:
+
             return render_template(
                 'login.html',
                 error='Please enter your username and password.'
             )
 
         with connect_db() as conn:
+
             user = conn.execute(
-                'SELECT username, password_hash FROM users WHERE username=?',
+                '''SELECT username, password_hash
+                   FROM users
+                   WHERE username = ?''',
                 (username,)
             ).fetchone()
 
-        if user and user[1] and check_password_hash(user[1], password):
+        if (
+            user
+            and user[1]
+            and check_password_hash(user[1], password)
+        ):
+
             session.clear()
             session['username'] = user[0]
+
             return redirect(url_for('main_menu'))
 
         return render_template(
@@ -365,51 +785,89 @@ def index():
             error='Invalid username or password.'
         )
 
-    return render_template('login.html')
+    return render_template(
+        'login.html',
+        reset_success=(
+            request.args.get('reset') == 'success'
+        )
+    )
 
 
 # REGISTER
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
 
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+
+        username = request.form.get(
+            'username', ''
+        ).strip()
+
+        email = request.form.get(
+            'email', ''
+        ).strip().lower()
+
         password = request.form.get('password', '')
-        confirm_password = request.form.get('confirm_password', '')
+        confirm_password = request.form.get(
+            'confirm_password', ''
+        )
 
         if len(username) < 3 or len(username) > 40:
+
             return render_template(
                 'register.html',
-                error='Username must be between 3 and 40 characters.'
-            )
+                error='Username must be 3-40 characters.'
+            ), 400
 
-        if len(password) < 8:
+        if (
+            len(email) > 254
+            or len(email) < 3
+            or '@' not in email
+            or ' ' in email
+        ):
+
+            return render_template(
+                'register.html',
+                error='Enter a valid email address.'
+            ), 400
+
+        if len(password) < 8 or len(password) > 1024:
+
             return render_template(
                 'register.html',
                 error='Password must be at least 8 characters.'
-            )
+            ), 400
 
         if password != confirm_password:
+
             return render_template(
                 'register.html',
                 error='Passwords do not match.'
-            )
-
-        password_hash = generate_password_hash(password)
+            ), 400
 
         try:
+
             with connect_db() as conn:
+
                 conn.execute(
-                    'INSERT INTO users (username, password_hash) VALUES (?, ?)',
-                    (username, password_hash)
+                    '''INSERT INTO users
+                       (username, email, password_hash)
+                       VALUES (?, ?, ?)''',
+                    (
+                        username,
+                        email,
+                        generate_password_hash(password)
+                    )
                 )
                 conn.commit()
 
         except sqlite3.IntegrityError:
+
             return render_template(
                 'register.html',
-                error='That username is already taken.'
-            )
+                error='Username or email is already in use.'
+            ), 409
 
         session.clear()
         session['username'] = username
@@ -417,6 +875,7 @@ def register():
         return redirect(url_for('main_menu'))
 
     return render_template('register.html')
+
 
 
 # LOGOUT
@@ -458,78 +917,163 @@ def character_creator():
 # VIEW A PLAYER IN A PARTY
 @app.route('/party/<int:party_id>/player/<int:player_id>', methods=['GET'])
 def dm_view_player(party_id, player_id):
-
     dm_user_id = current_user_id()
-
     try:
-        result = db_view_player_page(
-            dm_user_id,
-            party_id,
-            player_id
-        )
-
-        player = result["player"]
-        characters = result["characters"]
-
+        result = db_view_player_page(dm_user_id, party_id, player_id)
+        player = result['player']
         return jsonify({
-            "player": {
-                "user_id": player[0],
-                "username": player[1]
-            },
-            "characters": [
-                {
-                    "character_id": character[0],
-                    "character_name": character[1],
-                    "character_class": character[2],
-                    "level": character[3]
-                }
-                for character in characters
+            'player': {'user_id': player[0], 'username': player[1]},
+            'characters': [
+                {'character_id': c[0], 'character_name': c[1],
+                 'character_class': c[2], 'level': c[3]}
+                for c in result['characters']
             ],
-            "response_seconds": result["response_seconds"]
+            'response_seconds': result['response_seconds']
         })
-
     except PermissionError as error:
-        return jsonify({"error": str(error)}), 403
-
+        abort(403, description=str(error))
     except ValueError as error:
-        return jsonify({"error": str(error)}), 404
+        abort(404, description=str(error))
+
+
+
+# PARTY MANAGEMENT PAGE
+@app.route('/parties', methods=['GET'])
+def parties_page():
+    user_id = current_user_id()
+    selected_character = request.args.get('character_id', type=int)
+
+    with connect_db() as conn:
+        conn.row_factory = sqlite3.Row
+
+        personal_party_id(conn, user_id)
+
+        if selected_character is not None:
+            owned_character(conn, selected_character, user_id)
+
+        parties = conn.execute(
+            '''SELECT p.party_id, p.party_name, p.dm_user_id,
+          p.access_code,
+          u.username AS dm_name
+               FROM parties p
+               JOIN party_members pm ON pm.party_id = p.party_id
+               JOIN users u ON u.user_id = p.dm_user_id
+               WHERE pm.user_id = ?
+               ORDER BY p.party_name''',
+            (user_id,)
+        ).fetchall()
+
+        members = {}
+        party_characters = {}
+
+        for party in parties:
+            party_id = party['party_id']
+
+            members[party_id] = conn.execute(
+                '''SELECT u.user_id, u.username
+                   FROM party_members pm
+                   JOIN users u ON u.user_id = pm.user_id
+                   WHERE pm.party_id = ?
+                   ORDER BY u.username''',
+                (party_id,)
+            ).fetchall()
+
+            party_characters[party_id] = conn.execute(
+                '''SELECT c.character_id,
+                          c.user_id,
+                          c.character_name,
+                          c.character_class,
+                          c.character_level,
+                          c.hit_points,
+                          d.max_hit_points,
+                          d.race,
+                          u.username
+                   FROM characters c
+                   JOIN party_members pm
+                     ON pm.party_id = c.party_id
+                    AND pm.user_id = c.user_id
+                   JOIN users u ON u.user_id = c.user_id
+                   LEFT JOIN character_details d
+                     ON d.character_id = c.character_id
+                   WHERE c.party_id = ?
+                   ORDER BY c.character_name''',
+                (party_id,)
+            ).fetchall()
+
+        characters = conn.execute(
+            '''SELECT character_id, character_name, party_id
+               FROM characters
+               WHERE user_id = ?
+               ORDER BY character_name''',
+            (user_id,)
+        ).fetchall()
+
+    return render_template(
+        'parties.html',
+        parties=parties,
+        members=members,
+        party_characters=party_characters,
+        characters=characters,
+        selected_character=selected_character,
+        user_id=user_id,
+        error=request.args.get('error')
+    )
+
+
 
 
 # CREATE PARTY
 @app.route('/parties/create', methods=['POST'])
+@app.route('/parties/new', methods=['POST'])
 def create_party():
-
     user_id = current_user_id()
 
     party_name = text_field(
-        request.form,
-        'party_name',
-        100,
-        True
+        request.form, 'party_name', 100, True
     )
 
+    if party_name.casefold() == 'personal characters':
+        return redirect(url_for(
+            'parties_page',
+            error='That party name is reserved.'
+        ))
+
     with connect_db() as conn:
+
+        access_code = secrets.token_hex(4).upper()
+
+        while conn.execute(
+            "SELECT 1 FROM parties WHERE access_code = ?",
+            (access_code,)
+        ).fetchone():
+            access_code = secrets.token_hex(4).upper()
+
         cursor = conn.execute(
-            '''INSERT INTO parties (party_name, dm_user_id)
-               VALUES (?, ?)''',
-            (party_name, user_id)
+            """INSERT INTO parties
+               (party_name, dm_user_id, access_code)
+               VALUES (?, ?, ?)""",
+            (party_name, user_id, access_code)
         )
 
-        party_id = cursor.lastrowid
-
-        # Add the DM to the party
         conn.execute(
-            '''INSERT INTO party_members (party_id, user_id)
-               VALUES (?, ?)''',
-            (party_id, user_id)
+            """INSERT INTO party_members (party_id, user_id)
+               VALUES (?, ?)""",
+            (cursor.lastrowid, user_id)
         )
         conn.commit()
 
-    return jsonify({
-        "success": True,
-        "party_id": party_id,
-        "party_name": party_name
-    }), 201
+    return redirect(url_for('parties_page'))
+
+
+
+# HTML TEMPLATE COMPATIBILITY
+# Existing parties.html uses the create_party_page endpoint.
+app.add_url_rule('/parties/new-form', endpoint='create_party_page',
+                 view_func=create_party, methods=['POST'])
+
+
+
+# JOIN PARTY - ACCESS CODE REQUIRED
 
 
 ### ASSIGN LOG ROLE TO PARTY MEMBER
@@ -859,33 +1403,157 @@ def dm_remove_player(party_id, player_id):
 # JOIN PARTY
 @app.route('/party/<int:party_id>/join', methods=['POST'])
 def join_party(party_id):
-
     user_id = current_user_id()
 
+    access_code = request.form.get(
+        'access_code', ''
+    ).strip().upper()
+
+    if not access_code:
+        return redirect(url_for(
+            'parties_page',
+            error='An access code is required to join.'
+        ))
+
     with connect_db() as conn:
+
         party = conn.execute(
-            '''SELECT party_id
+            """SELECT party_name, dm_user_id, access_code
                FROM parties
-               WHERE party_id = ?''',
+               WHERE party_id = ?""",
             (party_id,)
         ).fetchone()
 
         if party is None:
-            return jsonify({"error": "Party not found."}), 404
+            return redirect(url_for(
+                'parties_page',
+                error='Party not found.'
+            ))
 
-        try:
-            conn.execute(
-                '''INSERT INTO party_members (party_id, user_id)
-                   VALUES (?, ?)''',
-                (party_id, user_id)
-            )
+        if party[0] == 'Personal Characters':
+            return redirect(url_for(
+                'parties_page',
+                error='Personal parties cannot be joined.'
+            ))
 
-        except sqlite3.IntegrityError:
-            return jsonify({
-                "error": "Already a member."
-            }), 409
+        if not secrets.compare_digest(
+            access_code,
+            party[2] or ''
+        ):
+            return redirect(url_for(
+                'parties_page',
+                error='Incorrect party access code.'
+            ))
 
-    return jsonify({"success": True}), 201
+        conn.execute(
+            """INSERT OR IGNORE INTO party_members
+               (party_id, user_id)
+               VALUES (?, ?)""",
+            (party_id, user_id)
+        )
+
+    return redirect(url_for('parties_page'))
+
+
+@app.route('/parties/join', methods=['POST'])
+def join_party_page():
+
+    party_id = integer_field(
+        request.form, 'party_id', 1, 2147483647
+    )
+
+    return join_party(party_id)
+
+
+
+# REMOVE PLAYER FROM PARTY
+@app.route('/party/<int:party_id>/remove/<int:player_id>', methods=['POST'])
+def dm_remove_player(party_id, player_id):
+    dm_user_id = current_user_id()
+    with connect_db() as conn:
+        party = conn.execute(
+            'SELECT dm_user_id, party_name FROM parties WHERE party_id = ?',
+            (party_id,)
+        ).fetchone()
+        if party is None:
+            abort(404, description='Party not found.')
+        if party[0] != dm_user_id or player_id == dm_user_id:
+            abort(403, description='Only the DM can remove other members.')
+        if party[1] == 'Personal Characters':
+            abort(403, description='Personal parties cannot be changed this way.')
+        member = conn.execute(
+            'SELECT 1 FROM party_members WHERE party_id = ? AND user_id = ?',
+            (party_id, player_id)
+        ).fetchone()
+        if member is None:
+            abort(404, description='Player is not in this party.')
+        personal_id = personal_party_id(conn, player_id)
+        conn.execute(
+            'UPDATE characters SET party_id = ? WHERE party_id = ? AND user_id = ?',
+            (personal_id, party_id, player_id)
+        )
+        conn.execute(
+            'DELETE FROM party_members WHERE party_id = ? AND user_id = ?',
+            (party_id, player_id)
+        )
+    return redirect(url_for('parties_page'))
+
+
+# HTML TEMPLATE COMPATIBILITY
+@app.route('/parties/<int:party_id>/kick/<int:member_id>', methods=['POST'])
+def kick_party_member(party_id, member_id):
+    return dm_remove_player(party_id, member_id)
+
+
+# LEAVE PARTY
+@app.route('/parties/<int:party_id>/leave', methods=['POST'])
+def leave_party_page(party_id):
+    user_id = current_user_id()
+    with connect_db() as conn:
+        party = conn.execute(
+            'SELECT dm_user_id, party_name FROM parties WHERE party_id = ?',
+            (party_id,)
+        ).fetchone()
+        if party is None:
+            abort(404, description='Party not found.')
+        if party[0] == user_id:
+            return redirect(url_for('parties_page', error='The DM cannot leave their own party.'))
+        member = conn.execute(
+            'SELECT 1 FROM party_members WHERE party_id = ? AND user_id = ?',
+            (party_id, user_id)
+        ).fetchone()
+        if member is None:
+            abort(403, description='You are not a member of this party.')
+        personal_id = personal_party_id(conn, user_id)
+        conn.execute(
+            'UPDATE characters SET party_id = ? WHERE party_id = ? AND user_id = ?',
+            (personal_id, party_id, user_id)
+        )
+        conn.execute(
+            'DELETE FROM party_members WHERE party_id = ? AND user_id = ?',
+            (party_id, user_id)
+        )
+    return redirect(url_for('parties_page'))
+
+
+# ASSIGN CHARACTER TO PARTY
+@app.route('/characters/<int:character_id>/party', methods=['POST'])
+def change_character_party(character_id):
+    user_id = current_user_id()
+    party_id = integer_field(request.form, 'party_id', 1, 2147483647)
+    with connect_db() as conn:
+        owned_character(conn, character_id, user_id)
+        membership = conn.execute(
+            'SELECT 1 FROM party_members WHERE party_id = ? AND user_id = ?',
+            (party_id, user_id)
+        ).fetchone()
+        if membership is None:
+            abort(403, description='Join the party before assigning a character.')
+        conn.execute(
+            'UPDATE characters SET party_id = ? WHERE character_id = ? AND user_id = ?',
+            (party_id, character_id, user_id)
+        )
+    return redirect(url_for('parties_page', character_id=character_id))
 
 
 # CREATE CHARACTER
@@ -1370,77 +2038,41 @@ def docs():
     })
 
 # DICE ROLLER
+
+
+
+@app.route('/dice_roller', methods=['GET', 'POST'])
 @app.route('/dice-roller', methods=['GET', 'POST'])
 def dice_roller():
 
     current_user_id()
 
-    result = None
+    if request.method == 'GET':
+        return render_template('dice_roller.html')
 
-    if request.method == 'POST':
-        dice_type = request.form.get('dice_type', request.form.get('dice', 'd20')).lower()
-        roll_type = request.form.get('roll_type', 'normal').lower()
+    dice_type = request.form.get('dice_type', 'd20').lower()
+    roll_type = request.form.get('roll_type', 'normal').lower()
 
-        try:
-            number = int(request.form.get('number', 1))
-            modifier = int(request.form.get('modifier', 0))
-        except (ValueError, TypeError):
-            abort(400, description='Please enter valid numbers.')
+    try:
+        number = int(request.form.get('number', 1))
+        modifier = int(request.form.get('modifier', 0))
 
-        if number < 1 or number > 100:
-            abort(400, description='Number of dice must be between 1 and 100.')
+        result = roll_dice(
+            dice_type=dice_type,
+            number=number,
+            modifier=modifier,
+            roll_type=roll_type
+        )
 
-        dice_options = {
-            'd4': 4,
-            'd6': 6,
-            'd8': 8,
-            'd10': 10,
-            'd12': 12,
-            'd20': 20,
-            'd100': 100
-        }
+    except (ValueError, TypeError) as error:
+        return jsonify({
+            'error': str(error)
+        }), 400
 
-        if dice_type not in dice_options:
-            abort(400, description='Invalid dice selection.')
+    return jsonify(result)
 
-        if roll_type not in ('normal', 'advantage', 'disadvantage'):
-            abort(400, description='Invalid roll type.')
 
-        import random
 
-        sides = dice_options[dice_type]
-
-        if roll_type == 'normal':
-            rolls = [
-                random.randint(1, sides)
-                for i in range(number)
-            ]
-
-            total = sum(rolls) + modifier
-
-        else:
-            if dice_type != 'd20' or number != 1:
-                abort(400, description='Advantage and disadvantage require one D20.')
-
-            first_roll = random.randint(1, 20)
-            second_roll = random.randint(1, 20)
-
-            if roll_type == 'advantage':
-                chosen_roll = max(first_roll, second_roll)
-            else:
-                chosen_roll = min(first_roll, second_roll)
-
-            rolls = [first_roll, second_roll]
-            total = chosen_roll + modifier
-
-        result = {
-            'dice_type': dice_type.upper(),
-            'rolls': rolls,
-            'modifier': modifier,
-            'total': total
-        }
-
-    return render_template('dice_roller.html', result=result)
 
 
 # START FLASK

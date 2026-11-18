@@ -3,7 +3,8 @@
 <html>
 <head>
     <title>Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}" />
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='styles/skeleton.css') }}" />
 </head>
 
 <body>
@@ -13,7 +14,6 @@
         <div class="login_border">
             <h1>Welcome to the D&D Character Hub!</h1>
 
-            
             <form action="{{ url_for('login') }}" method="POST">
 
                 <label for="username">Username</label>
@@ -42,6 +42,7 @@
                 
                 <button type="submit">Login</button>
             </form>
+
             <br />
             
             <form action="{{ url_for('register') }}" method="GET">
@@ -54,7 +55,21 @@
                 <p style="color: red;">{{ error }}</p>
             {% endif %}
 
-            
+            {% if reset_success %}
+                <p style="color: green;">
+                    Password updated. Please log in.
+                </p>
+            {% endif %}
+
+            <p>
+                <a href="{{ url_for('forgot_password') }}">
+                    Forgot Password?
+                </a>
+            </p>
+
+            <form action="{{ url_for('register') }}" method="GET">
+                <button type="submit">Register</button>
+            </form>
         </div>
 
         <marquee>

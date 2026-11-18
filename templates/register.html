@@ -3,7 +3,8 @@
 <html>
 <head>
     <title>Register</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}" />
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='styles/skeleton.css') }}" />
 </head>
 
 <body>
@@ -13,7 +14,6 @@
             <h1>Welcome to the D&D Character Hub!</h1>
             <h1 style="color:rgb(49, 49, 49); font-size: 37px;">Create an Account</h1>
 
-            <!-- Displays registration errors -->
             {% if error %}
                 <p class="message" style="color: red;">{{ error }}</p>
             {% endif %}
@@ -22,27 +22,61 @@
 
                 <label for="username">Username</label>
                 <br />
-                <input class="field" type="text"
-                       id="username" name="username"
-                       minlength="3" maxlength="40" required />
+                <input
+                    class="field"
+                    type="text"
+                    id="username"
+                    name="username"
+                    minlength="3"
+                    maxlength="40"
+                    required
+                />
+                <br />
+
+                <label for="email">Email Address</label>
+                <br />
+                <input
+                    class="field"
+                    type="email"
+                    id="email"
+                    name="email"
+                    maxlength="254"
+                    autocomplete="email"
+                    required
+                />
                 <br />
 
                 <label for="password">Password</label>
                 <br />
-                <input class="field" type="password"
-                       id="password" name="password"
-                       minlength="8" required />
+                <input
+                    class="field"
+                    type="password"
+                    id="password"
+                    name="password"
+                    minlength="8"
+                    required
+                />
                 <br />
 
                 <label for="confirm_password">Confirm Password</label>
                 <br />
-                <input class="field" type="password"
-                       id="confirm_password" name="confirm_password"
-                       minlength="8" required />
+                <input
+                    class="field"
+                    type="password"
+                    id="confirm_password"
+                    name="confirm_password"
+                    minlength="8"
+                    required
+                />
                 <br />
                 <br />
 
                 <button type="submit">Register</button>
+
+                <p>
+                    *Note: Password must be at least 8 characters long.
+                </p>
+
             </form>
 
             <br />
@@ -56,8 +90,10 @@
         </div>
 
         <marquee>
-            <img src="{{ url_for('static', filename='img/dnd.png') }}"
-                 style="width: 10%; height: auto;" />
+            <img
+                src="{{ url_for('static', filename='img/dnd.png') }}"
+                style="width: 10%; height: auto;"
+            />
         </marquee>
 
     </center>

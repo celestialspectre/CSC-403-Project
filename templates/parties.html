@@ -1,0 +1,771 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>D&D Party Lobby</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='styles/skeleton.css') }}">
+
+          
+    <style>
+        /* MAIN PAGE */
+
+        body .party-page {
+            display: block;
+            width: 95%;
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 20px;
+            box-sizing: border-box;
+            line-height: 1.6;
+        }
+
+        body .party-page * {
+            box-sizing: border-box;
+        }
+
+        .party-heading {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .party-heading h1 {
+            color: #e8d7ff;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .party-heading p {
+            color: #e8d7ff;
+            text-align: center;
+        }
+
+        /* PARTY PANELS */
+
+        body .party-page .party-section {
+            display: block;
+            width: 100%;
+            height: auto;
+            min-height: 0;
+            background: antiquewhite;
+            color: #222;
+            border: 2px solid #45352b;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 0 0 30px;
+            overflow: visible;
+        }
+
+        body .party-page .party-section h2,
+        body .party-page .party-section h3 {
+            display: block;
+            position: static;
+            color: #30251e;
+            text-align: left;
+            line-height: 1.4;
+            margin: 0 0 20px;
+            padding: 0;
+        }
+
+        body .party-page .party-section h3 {
+            margin-top: 30px;
+        }
+
+        body .party-page .party-section p {
+            color: #222;
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        /* FORMS */
+
+        body .party-page .party-section form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            width: auto;
+            height: auto;
+            min-height: 0;
+            margin: 10px 0 20px;
+            padding: 0;
+        }
+
+        body .party-page .party-section input,
+        body .party-page .party-section select {
+            position: static;
+            width: auto;
+            min-width: 180px;
+            max-width: 100%;
+            height: auto;
+            min-height: 42px;
+            padding: 10px;
+            margin: 0;
+            color: #222;
+            background: white;
+            border: 1px solid #777;
+            border-radius: 5px;
+            font-size: 15px;
+        }
+
+        body .party-page .party-section button {
+            position: static;
+            display: inline-block;
+            width: auto;
+            height: auto;
+            min-height: 42px;
+            padding: 10px 16px;
+            margin: 0;
+            color: #111;
+            background: #d6d6d6;
+            border: 2px solid #222;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        body .party-page .party-section button:hover {
+            background: #c3b4d8;
+        }
+
+        /* PARTY INFORMATION */
+
+        .party-info {
+            margin-bottom: 30px;
+        }
+
+        .party-info p {
+            margin: 12px 0;
+        }
+
+        /* CHARACTER CAROUSEL */
+
+        body .party-page .character-carousel {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            align-items: stretch;
+            gap: 20px;
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            padding: 15px 5px 25px;
+            margin: 15px 0;
+            scrollbar-width: thin;
+        }
+
+        /* CHARACTER CARDS */
+
+        body .party-page .party-character-card {
+            display: flex;
+            flex-direction: column;
+            flex: 0 0 240px;
+            width: 240px;
+            min-height: 270px;
+            padding: 18px;
+            background: #fffaf0;
+            color: #222;
+            border: 2px solid #45352b;
+            border-radius: 8px;
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #999;
+        }
+
+        body .party-page .card-top h3 {
+            margin: 0;
+            color: #30251e;
+            font-size: 18px;
+            overflow-wrap: anywhere;
+        }
+
+        .card-hp {
+            font-size: 13px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .card-details {
+            margin-top: 15px;
+        }
+
+        body .party-page .card-details p {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+
+        body .party-page .card-owner {
+            margin-top: auto;
+            padding-top: 18px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .card-link {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* CAROUSEL ARROWS */
+
+        .carousel-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0 35px;
+        }
+
+        .carousel-controls span {
+            color: #30251e;
+            text-align: center;
+        }
+
+        body .party-page .carousel-controls button {
+            min-width: 55px;
+            height: 45px;
+            font-size: 22px;
+        }
+
+        /* CHARACTER ASSIGNMENT */
+
+        .assign-section {
+            display: block;
+            clear: both;
+            margin: 35px 0;
+            padding-top: 15px;
+            border-top: 1px solid #b8a58f;
+        }
+
+        body .party-page .assign-section h3 {
+            margin: 0 0 20px;
+        }
+
+        body .party-page .assign-character-form {
+            margin-bottom: 30px;
+        }
+
+        /* PARTY MEMBERS */
+
+        .members-section {
+            margin-top: 35px;
+            padding-top: 20px;
+            border-top: 1px solid #b8a58f;
+        }
+
+        .member-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 10px 0;
+            margin-bottom: 10px;
+        }
+
+        body .party-page .member-row form {
+            margin: 0;
+        }
+
+        /* MESSAGES AND NAVIGATION */
+
+        .empty-message {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .error-message {
+            color: #ffb6b6;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            padding: 12px 20px;
+            background: antiquewhite;
+            color: #222;
+            border: 2px solid #45352b;
+            border-radius: 6px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            background: #d8c5e9;
+        }
+
+        /* MOBILE LAYOUT */
+
+        @media (max-width: 600px) {
+            body .party-page {
+                width: 100%;
+                padding: 12px;
+            }
+
+            body .party-page .party-section {
+                padding: 18px;
+            }
+
+            body .party-page .party-character-card {
+                flex-basis: 200px;
+                width: 200px;
+            }
+
+            .carousel-controls span {
+                font-size: 13px;
+            }
+        }
+
+/* Dungeon Master controls */
+
+.dm-access-code {
+    background-color: #e8dcc4;
+    border: 2px solid #8b6f47;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 25px 0;
+}
+
+.party-page .dm-access-code h3 {
+    color: #30251e;
+    margin: 0 0 15px;
+}
+
+.dm-access-code code {
+    display: inline-block;
+    background: #fffaf0;
+    color: #222;
+    border: 1px solid #8b6f47;
+    border-radius: 5px;
+    padding: 8px 12px;
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.party-page .remove-player-form button {
+    background: #8b3030;
+    color: white;
+    border-color: #5a1717;
+}
+
+.party-page .remove-player-form button:hover {
+    background: #a84343;
+}
+
+    </style>
+</head>
+
+<body>
+
+<main class="party-page">
+
+    <!-- PAGE HEADER -->
+
+    <header class="party-heading">
+        <h1>D&D Party Lobby</h1>
+        <p>Manage your parties and adventurers.</p>
+    </header>
+
+    {% if error %}
+        <p class="error-message">{{ error }}</p>
+    {% endif %}
+
+    <!-- CREATE PARTY -->
+
+    <section class="party-section">
+
+        <h2>Create Party</h2>
+
+        <form action="{{ url_for('create_party') }}"
+              method="POST">
+
+            <input type="text"
+                   name="party_name"
+                   maxlength="100"
+                   placeholder="Enter Party Name"
+                   required>
+
+            <button type="submit">
+                Create Party
+            </button>
+
+        </form>
+
+    </section>
+
+    <!-- JOIN PARTY -->
+
+    <section class="party-section">
+
+        <h2>Join Party</h2>
+
+        
+<form action="{{ url_for('join_party_page') }}"
+      method="POST">
+
+    <input type="number"
+           name="party_id"
+           min="1"
+           placeholder="Enter Party ID"
+           required>
+
+    <input type="text"
+           name="access_code"
+           maxlength="8"
+           placeholder="Enter Access Code"
+           autocomplete="off"
+           required>
+
+    <button type="submit">
+        Join Party
+    </button>
+
+</form>
+
+    <!-- MY PARTIES -->
+
+    {% for party in parties %}
+
+    <section class="party-section">
+
+        <h2>{{ party['party_name'] }}</h2>
+
+        <div class="party-info">
+
+            <p>
+                <strong>Party ID:</strong>
+                {{ party['party_id'] }}
+            </p>
+
+            <p>
+                <strong>Dungeon Master:</strong>
+                {{ party['dm_name'] }}
+            </p>
+
+{% if party['dm_user_id'] == user_id
+      and party['party_name'] != 'Personal Characters' %}
+
+    <div class="dm-access-code">
+
+        <h3>Dungeon Master Controls</h3>
+
+        <p>
+            <strong>Party Access Code:</strong>
+            <code>{{ party['access_code'] }}</code>
+        </p>
+
+        <p>
+            Share this code and the Party ID
+            with players you want to invite.
+        </p>
+
+    </div>
+
+{% endif %}
+
+        </div>
+
+        <!-- PARTY CHARACTERS -->
+
+        <h3>Party Characters</h3>
+
+        <div class="character-carousel"
+             id="carousel-{{ party['party_id'] }}">
+
+            {% for character in party_characters[party['party_id']] %}
+
+            <article class="party-character-card">
+
+                <div class="card-top">
+
+                    <h3>{{ character['character_name'] }}</h3>
+
+                    <span class="card-hp">
+                        {{ character['hit_points'] if character['hit_points'] is not none else 0 }}
+                        /
+                        {{ character['max_hit_points'] if character['max_hit_points'] is not none else (character['hit_points'] if character['hit_points'] is not none else 0) }}
+                        HP
+                    </span>
+
+                </div>
+
+                <div class="card-details">
+
+                    <p>
+                        <strong>Level:</strong>
+                        {{ character['character_level'] }}
+                    </p>
+
+                    <p>
+                        <strong>Race:</strong>
+                        {{ character['race'] or 'Unknown' }}
+                    </p>
+
+                    <p>
+                        <strong>Class:</strong>
+                        {{ character['character_class'] or 'Adventurer' }}
+                    </p>
+
+                </div>
+
+                <p class="card-owner">
+                    Player: {{ character['username'] }}
+                </p>
+
+                {% if character['user_id'] == user_id %}
+
+                    <a class="card-link"
+                       href="{{ url_for('character_sheet', character_id=character['character_id']) }}">
+                        View Character Sheet
+                    </a>
+
+                {% endif %}
+
+            </article>
+
+            {% else %}
+
+                <p class="empty-message">
+                    No characters have been assigned to this party yet.
+                </p>
+
+            {% endfor %}
+
+        </div>
+
+        <!-- CAROUSEL NAVIGATION -->
+
+        <div class="carousel-controls">
+
+            <button type="button"
+                    class="scroll-button"
+                    data-party-id="{{ party['party_id'] }}"
+                    data-direction="-1"
+                    aria-label="Scroll left">
+                &#8592;
+            </button>
+
+            <span>Browse Party Characters</span>
+
+            <button type="button"
+                    class="scroll-button"
+                    data-party-id="{{ party['party_id'] }}"
+                    data-direction="1"
+                    aria-label="Scroll right">
+                &#8594;
+            </button>
+
+        </div>
+
+        <!-- ASSIGN CHARACTER -->
+
+        <div class="assign-section">
+
+            <h3>Assign Character to Party</h3>
+
+            <form method="POST"
+                  class="assign-character-form"
+                  data-action-template="{{ url_for('change_character_party', character_id=0) }}">
+
+                <select name="character_id" required>
+
+                    <option value="">
+                        Select Character
+                    </option>
+
+                    {% for character in characters %}
+
+                        <option value="{{ character['character_id'] }}"
+                            {% if selected_character == character['character_id'] %}
+                                selected
+                            {% endif %}>
+                            {{ character['character_name'] }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+                <input type="hidden"
+                       name="party_id"
+                       value="{{ party['party_id'] }}">
+
+                <button type="submit">
+                    Assign Character
+                </button>
+
+            </form>
+
+        </div>
+
+        
+<!-- PARTY MEMBERS -->
+
+<div class="members-section">
+
+    <h3>Party Members</h3>
+
+    {% for member in members[party['party_id']] %}
+
+        <div class="member-row">
+
+            <strong>{{ member['username'] }}</strong>
+
+            {% if party['dm_user_id'] == user_id
+                  and member['user_id'] != user_id
+                  and party['party_name'] != 'Personal Characters' %}
+
+                <form
+                    action="{{ url_for('dm_remove_player',
+                        party_id=party['party_id'],
+                        player_id=member['user_id']) }}"
+                    method="POST"
+                    class="remove-player-form">
+
+                    <button type="submit">
+                        Remove Player
+                    </button>
+
+                </form>
+
+            {% endif %}
+
+        </div>
+
+    {% else %}
+
+        <p>No members in this party.</p>
+
+    {% endfor %}
+
+</div>
+
+
+
+        <!-- LEAVE PARTY -->
+
+        {% if party['dm_user_id'] != user_id %}
+
+            <form action="{{ url_for('leave_party_page', party_id=party['party_id']) }}"
+                  method="POST"
+                  class="leave-party-form">
+
+                <button type="submit">
+                    Leave Party
+                </button>
+
+            </form>
+
+        {% endif %}
+
+    </section>
+
+    {% else %}
+
+        <p style="color: white; text-align: center;">
+            No parties available.
+        </p>
+
+    {% endfor %}
+
+    <!-- BACK TO MAIN MENU -->
+
+    <a href="{{ url_for('main_menu') }}" class="back-link">
+        Return to Main Menu
+    </a>
+
+</main>
+
+<script>
+    // SCROLL CHARACTER CARDS
+
+    document.querySelectorAll(".scroll-button").forEach(function(button) {
+
+        button.addEventListener("click", function() {
+
+            const partyId = this.dataset.partyId;
+            const direction = Number(this.dataset.direction);
+
+            const carousel = document.getElementById(
+                "carousel-" + partyId
+            );
+
+            if (carousel) {
+                carousel.scrollBy({
+                    left: direction * 260,
+                    behavior: "smooth"
+                });
+            }
+        });
+    });
+
+
+    // ASSIGN CHARACTER TO PARTY
+
+    document.querySelectorAll(".assign-character-form").forEach(function(form) {
+
+        form.addEventListener("submit", function(event) {
+
+            const characterId = this.querySelector(
+                '[name="character_id"]'
+            ).value;
+
+            if (!characterId) {
+                event.preventDefault();
+                return;
+            }
+
+            const actionTemplate = this.dataset.actionTemplate;
+
+            this.action = actionTemplate.replace(
+                "/0/party",
+                "/" + encodeURIComponent(characterId) + "/party"
+            );
+        });
+    });
+
+
+    // REMOVE PLAYER CONFIRMATION
+
+    document.querySelectorAll(".remove-player-form").forEach(function(form) {
+
+        form.addEventListener("submit", function(event) {
+
+            if (!confirm("Remove this player from the party?")) {
+                event.preventDefault();
+            }
+        });
+    });
+
+
+    // LEAVE PARTY CONFIRMATION
+
+    document.querySelectorAll(".leave-party-form").forEach(function(form) {
+
+        form.addEventListener("submit", function(event) {
+
+            if (!confirm("Are you sure you want to leave this party?")) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
