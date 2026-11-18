@@ -2012,37 +2012,94 @@ def docs():
 
 # DICE ROLLER
 
+# dice helpers
+from dice_features import (
+    parse_expression, exact_distribution, roll_dice,
+    probability_at_least, render_probability_chart
+)
 
 
-@app.route('/dice_roller', methods=['GET', 'POST'])
+# saved rolls table, created in the same sqlite database as the users
+def ensure_saved_rolls_table():
+    with connect_db() as conn:
+        conn.execute('''CREATE TABLE IF NOT EXISTS saved_rolls (
+            roll_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            roll_name TEXT NOT NULL,
+            roll_expression TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )''')
+
+
+ensure_saved_rolls_table()
+
+# dice roller supports both og version and custom expressions.
 @app.route('/dice-roller', methods=['GET', 'POST'])
 def dice_roller():
+    user_id = current_user_id()
+    result = None
+    graph = None
+    chance = None
+    expression = ''
+    target = 15
+    mode = 'standard'
+    roll_type = 'normal'
+    dice_type = 'd20'
+    number = 1
+    modifier = 0
 
-    current_user_id()
+    if request.method == 'POST':
+        mode = request.form.get('mode', 'standard')
+        if mode not in ('standard', 'custom'):
+            abort(400, description='Invalid dice mode.')
+        roll_type = request.form.get('roll_type', 'normal').lower()
+        if roll_type not in ('normal', 'advantage', 'disadvantage'):
+            abort(400, description='Invalid roll type.')
+        target = integer_field(request.form, 'target', -10000, 20000, 15)
 
-    if request.method == 'GET':
-        return render_template('dice_roller.html')
+        if mode == 'custom':
+            expression = request.form.get('expression', '').strip()
+            if roll_type != 'normal':
+                abort(400, description='Custom expressions currently use normal rolls only.')
+            try:
+                dice, modifier = parse_expression(expression)
+            except ValueError as error:
+                abort(400, description=str(error))
+        else:
+            dice_type = request.form.get('dice_type', 'd20').lower()
+            options = {'d4': 4, 'd6': 6, 'd8': 8, 'd10': 10, 'd12': 12, 'd20': 20, 'd100': 100}
+            if dice_type not in options:
+                abort(400, description='Invalid dice selection.')
+            number = integer_field(request.form, 'number', 1, 30, 1)
+            modifier = integer_field(request.form, 'modifier', -10000, 10000, 0)
+            dice = [(number, options[dice_type])]
+            if number * (options[dice_type] - 1) > 1500:
+                abort(400, description='Too many possible totals to graph.')
+            expression = f'{number}{dice_type} {modifier:+d}'
 
-    dice_type = request.form.get('dice_type', 'd20').lower()
-    roll_type = request.form.get('roll_type', 'normal').lower()
+        try:
+            probabilities = exact_distribution(dice, modifier, roll_type)
+            groups, total = roll_dice(dice, modifier, roll_type)
+            graph = render_probability_chart(probabilities, target)
+        except ValueError as error:
+            abort(400, description=str(error))
 
-    try:
-        number = int(request.form.get('number', 1))
-        modifier = int(request.form.get('modifier', 0))
+        chance = probability_at_least(probabilities, target)
+        result = {'dice_type': expression, 'groups': groups, 'modifier': modifier, 'total': total, 'roll_type': roll_type}
 
-        result = roll_dice(
-            dice_type=dice_type,
-            number=number,
-            modifier=modifier,
-            roll_type=roll_type
-        )
+    with connect_db() as conn:
+        conn.row_factory = sqlite3.Row
+        saved_rolls = conn.execute(
+            'SELECT roll_id, roll_name, roll_expression FROM saved_rolls '
+            'WHERE user_id=? ORDER BY roll_id DESC', (user_id,)
+        ).fetchall()
 
-    except (ValueError, TypeError) as error:
-        return jsonify({
-            'error': str(error)
-        }), 400
+    return render_template('dice_roller.html', result=result, graph=graph,
+                           chance=chance, target=target, expression=expression,
+                           mode=mode, roll_type=roll_type, dice_type=dice_type,
+                           number=number, modifier=modifier,
+                           saved_rolls=saved_rolls)
 
-    return jsonify(result)
 
 
 

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -170,8 +169,10 @@
             }
         }
     </style>
+    <meta charset="utf-8">
+    <title>D&D Character Hub - Dice Roller</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}">
 </head>
-
 <body>
 <center>
     <div id="triangle-down" class="border-decor"></div>
@@ -313,5 +314,129 @@
     src="{{ url_for('static', filename='js/dice_animation.js') }}?v=2"
 ></script>
 
+    <main class="dice-page login_border">
+        <h1>D&D Character Hub</h1>
+        <h2>Dice Roller</h2>
+
+        <!-- standard roller still exists, new mode is optional -->
+        <form action="{{ url_for('dice_roller') }}" method="POST" class="dice-form">
+            <fieldset>
+                <legend>Roll method</legend>
+                <label><input type="radio" name="mode" value="standard" {% if mode != 'custom' %}checked{% endif %}> Standard dice</label>
+                <label><input type="radio" name="mode" value="custom" {% if mode == 'custom' %}checked{% endif %}> Custom expression</label>
+            </fieldset>
+
+            <div id="standard-fields" class="dice-fields">
+                <label for="dice_type">Dice Type</label>
+                <select id="dice_type" name="dice_type">
+                    {% for die in ['d4','d6','d8','d10','d12','d20','d100'] %}
+                        <option value="{{ die }}" {% if dice_type == die %}selected{% endif %}>{{ die|upper }}</option>
+                    {% endfor %}
+                </select>
+                <label for="number">Number of Dice</label>
+                <input id="number" name="number" type="number" min="1" max="30" value="{{ number }}">
+                <label for="modifier">Modifier</label>
+                <input id="modifier" name="modifier" type="number" value="{{ modifier }}">
+                <label for="roll_type">Roll Type</label>
+                <select id="roll_type" name="roll_type">
+                    {% for value, label in [('normal','Normal'),('advantage','Advantage (one d20)'),('disadvantage','Disadvantage (one d20)')] %}
+                        <option value="{{ value }}" {% if roll_type == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="custom-fields" class="dice-fields">
+                <label for="expression">Custom Dice Expression</label>
+                <input id="expression" name="expression" type="text" maxlength="160" value="{{ expression if mode == 'custom' else '' }}" placeholder="1d20 + 1d4 + 3">
+                <p>Examples: 2d6 + 3, 1d20 + 1d4 - 2, 8d6</p>
+            </div>
+
+            <!-- target is included in the final roll total, with >= counting as success -->
+            <label for="target">Target Number (DC / AC)</label>
+            <input id="target" name="target" type="number" min="-10000" max="20000" value="{{ target }}">
+            <button type="submit">Roll Dice &amp; Show Probability</button>
+        </form>
+
+        {% if result %}
+        <!-- show mixed dice groups, total, and original modifier -->
+        <section class="dice-result">
+            <h2>Roll Results</h2>
+            <p><strong>Expression:</strong> {{ result.dice_type }}</p>
+            {% for group in result.groups %}
+                <p><strong>d{{ group.sides }} rolls:</strong> {{ group["values"]|join(', ') }}</p>
+            {% endfor %}
+            <p><strong>Modifier:</strong> {{ result.modifier }}</p>
+            <p><strong>Roll type:</strong> {{ result.roll_type }}</p>
+            <h2>Total: {{ result.total }}</h2>
+            <p><strong>Target:</strong> {{ target }} —
+                {% if result.total >= target %}Success{% else %}Failure{% endif %}
+            </p>
+        </section>
+
+        <!-- pygal chart and tooltips for probability -->
+        <section class="dice-chart-section">
+            <h2>Probability Analysis</h2>
+            <p class="dice-chance">Chance of rolling {{ target }} or higher: <strong>{{ '%.2f'|format(chance) }}%</strong></p>
+            <img class="dice-chart" src="{{ graph }}" alt="Probability of each dice total, with successful outcomes highlighted">
+        </section>
+        {% endif %}
+
+        <!-- save a custom expression for the account -->
+        <section class="dice-saved">
+            <h2>Save a Custom Roll</h2>
+            <form action="{{ url_for('dice_roller') }}" method="POST" class="dice-form">
+                <label for="roll_name">Roll Name</label>
+                <input id="roll_name" name="roll_name" maxlength="80" placeholder="Longsword damage" required>
+                <label for="save_expression">Expression</label>
+                <input id="save_expression" name="expression" maxlength="160" value="{{ expression if mode == 'custom' else '' }}" placeholder="1d8 + 4" required>
+                <button type="submit">Save Roll</button>
+            </form>
+            <h2>My Saved Rolls</h2>
+            {% if saved_rolls %}
+                {% for saved in saved_rolls %}
+                <div class="dice-saved-row">
+                    <span><strong>{{ saved.roll_name }}</strong> — {{ saved.roll_expression }}</span>
+                    <!-- load custom dice sequence, user can set a target and roll -->
+                    <button type="button" class="load-roll" data-expression="{{ saved.roll_expression|e }}">Load</button>
+                    <form action="{{ url_for('delete_dice_roll', roll_id=saved.roll_id) }}" method="POST">
+                        <button type="submit">Delete</button>
+                    </form>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>No saved rolls yet.</p>
+            {% endif %}
+        </section>
+
+        <nav class="dice-nav">
+            <a href="{{ url_for('character_creator') }}">Character Creator</a>
+            <a href="{{ url_for('main_menu') }}">Return to Main Menu</a>
+        </nav>
+    </main>
+
+    <!-- small script only toggles form fields and loads saved expressions -->
+    <script>
+        const modes = document.querySelectorAll('input[name="mode"]');
+        const standardFields = document.getElementById('standard-fields');
+        const customFields = document.getElementById('custom-fields');
+        const expressionField = document.getElementById('expression');
+        function updateMode() {
+            const custom = document.querySelector('input[name="mode"]:checked').value === 'custom';
+            standardFields.hidden = custom;
+            customFields.hidden = !custom;
+        }
+        modes.forEach(radio => radio.addEventListener('change', updateMode));
+        updateMode();
+        document.querySelectorAll('.load-roll').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelector('input[name="mode"][value="custom"]').checked = true;
+                expressionField.value = button.dataset.expression;
+                document.getElementById('save_expression').value = button.dataset.expression;
+                updateMode();
+                expressionField.focus();
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            });
+        });
+    </script>
 </body>
 </html>
