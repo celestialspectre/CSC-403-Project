@@ -7,6 +7,7 @@ import sqlite3
 import os
 import json
 from log_ai import summarize_session
+from api_helper import parse_description
 import requests
 
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -219,6 +220,10 @@ SHEET_NUMERIC = {
     'spell_save_dc',
     'spell_attack_bonus'
 }
+
+#api parameters. append desired destination to url w/ concatenation
+url = "https://www.dnd5eapi.co/api/2024/" #api base url
+data = '{"query"}'
 
 
 # Checks number inputs
@@ -1265,6 +1270,35 @@ def character():
         'legacy-character.html',
         data=data
     ), 200
+
+
+@app.route('/conditions', methods=['GET'])
+def conditions():
+    conditions = ['blinded', 'charmed', 'deafened', 'exhaustion', 'frightened', 'grappled', 'incapacitated', 'invisible', 'paralyzed', 'petrified', 'poisoned', 'prone', 'restrained', 'stunned', 'unconscious']
+
+    dictList = []
+
+    for cond in conditions:
+        append = f"conditions/{cond}"
+
+        payload = {}
+        headers = {
+            'Accept': 'application/json'
+        }
+
+        response = requests.request("GET", url+append, headers=headers, data=payload) #queries the api. "conditions/blinded gives the output for the blinded condition"
+
+        #condition json output from api: index, name, description, url, updated_at
+        dict = json.loads(response.text) #splits json output into a dictinoary 
+
+        dict["description"] = parse_description(dict["description"])
+        dictList += [dict]
+
+    return render_template("statuses.html", conditions=dictList)
+
+
+
+
 
 
 # DOCUMENTATION

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+
+<head>
+    <title>Statuses</title>
+    <link rel="stylesheet" href="static/styles/skeleton.css" />
+</head>
+
+<body>
+    <!--<select name="sel_status">
+        <option value="blinded">Blinded</option>
+        <option value="charmed">Charmed</option>
+        <option value="deafened">Deafened</option>
+        <option value="exhaustion">Exhaustion</option>
+        <option value="frightened">Frightened</option>
+        <option value="grappled">Grappled</option>
+        <option value="incapacitated">Incapacitated</option>
+        <option value="invisible">Invisible</option>
+        <option value="paralyzed">Paralyzed</option>
+        <option value="petrified">Petrified</option>
+        <option value="poisoned">Poisoned</option>
+        <option value="prone">Prone</option>
+        <option value="restrained">Restrained</option>
+        <option value="stunned">Stunned</option>
+        <option value="unconscious">Unconscious</option>
+    </select>
+
+    <div class="status-entry" style="color: white; font-family: 'Young Serif'; justify-self: center;">
+        <h2 style="text-align: left;">Blinded</h2>
+        <div class="line" style="background-color: rgb(177, 177, 177); height: 2px; width: 90%; margin-top: -15px; margin-bottom: 10px;"></div>
+        <list>
+            <li>You can't see and automatically fail any ability check that requires sight.</li>
+            <li>Attack rolls against you have Advantage, and your attack rolls have Disadvantage.</li>
+        </list>
+    </div>-->
+
+    {%for cond in conditions%}
+    <div class="status-entry" style="color: white; font-family: 'Young Serif'; justify-self: center; width: 70%;">
+        <h2 style="text-align: left;">{{cond["name"]}}</h2>
+        <div class="line" style="background-color: rgb(177, 177, 177); height: 2px; width: 90%; margin-top: -15px; margin-bottom: 10px;"></div>
+        
+        <list>
+            {%for desc in cond["description"]%}
+            <li>{{desc}}</li>
+            {%endfor%}
+        </list>
+    </div>
+    <br />
+    {%endfor%}
+
+
+</body>
