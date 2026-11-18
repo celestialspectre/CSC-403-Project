@@ -449,7 +449,49 @@ def create_sheet_tables():
             current_value INTEGER NOT NULL DEFAULT 0 CHECK(current_value >= 0),
             max_value INTEGER NOT NULL DEFAULT 0 CHECK(max_value >= 0),
             FOREIGN KEY(character_id) REFERENCES characters(character_id) ON DELETE CASCADE
-        );""")
+        );
+
+        -- One designated Log player per party
+        CREATE TABLE IF NOT EXISTS party_log_roles (
+            party_id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+
+            FOREIGN KEY (party_id)
+            REFERENCES parties(party_id)
+            ON DELETE CASCADE,
+
+            FOREIGN KEY (party_id, user_id)
+            REFERENCES party_members(party_id, user_id)
+        );
+
+    -- Session logs belonging directly to a party
+    CREATE TABLE IF NOT EXISTS party_logs (
+        log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        party_id INTEGER NOT NULL,
+        author_id INTEGER NOT NULL,
+        session_number INTEGER NOT NULL
+        CHECK (session_number > 0),
+        session_title TEXT NOT NULL,
+        session_notes TEXT NOT NULL DEFAULT '',
+        ai_summary TEXT,
+        status TEXT NOT NULL DEFAULT 'draft'
+        CHECK (status IN ('draft', 'review', 'published')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+        FOREIGN KEY (party_id)
+        REFERENCES parties(party_id)
+        ON DELETE CASCADE,
+
+        FOREIGN KEY (author_id)
+        REFERENCES users(user_id),
+
+        UNIQUE (party_id, session_number)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_party_logs_party
+    ON party_logs(party_id);
+                """)
 
 # reference excel sheet that I sent yall
 def add_excel_sheet_fields():
