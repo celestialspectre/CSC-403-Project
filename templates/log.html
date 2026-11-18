@@ -3,18 +3,19 @@
 <html>
 <head>
     <title>Campaign Log</title>
-    <link rel="stylesheet" href="../static/styles/skeleton.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}" />
 </head>
 
 <body>
     <center>
         <div class="login_border" style="width: 60%; height: auto;">
-            <h1>Campaign Log</h1>
+            <h1 style="padding-bottom: 5px;">Campaign Log</h1>
             <form method="post">
-                <button style="justify-self: left; margin-right: 290px;" formaction="/main">Main Menu</button>
-                <button style="justify-self: center;" formaction="{{ url_for('generate_party_log_summary') }}">Summarize</button>
-                <button style="justify-self: right; margin-left: 290px;" formaction="{{ url_for('save_party_log') }}">Save Notes</button>
-                <textarea name="session_title" style="width: 90%; margin-top: 10px;" placeholder="Title" >{{ session_title }}</textarea>
+                <button style="justify-self: left; margin-right: 240px;" formaction="{{ url_for('main_menu') }}">Main Menu</button>
+                <button style="justify-self: center;" formaction="{{ url_for('generate_party_log_summary', log_id=1, party_id=party_id) }}">Summarize</button>
+                <button style="justify-self: right; margin-left: 240px;" formaction="{{ url_for('save_party_log', party_id=party_id) }}">Save Notes</button>
+                <textarea name="session_title" style="width: 80%; margin-top: 10px; font-size: x-large; padding-bottom: 0px;" placeholder="Title" >{{ session_title }}</textarea>
+                <textarea inputmode="numeric" name="session_number" style="width: 8%; text-align: center; font-size: larger;" placeholder="Session &NewLine;Number"></textarea>
                 <textarea name="log_text" style="width: 90%; height: 500px; padding: 5px; margin-top: 10px; margin-bottom: 10px;" placeholder="Type your notes here!">{{ log_contents }}</textarea>
             </form>
         </div>

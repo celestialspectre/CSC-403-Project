@@ -391,6 +391,7 @@ def register():
                     'INSERT INTO users (username, password_hash) VALUES (?, ?)',
                     (username, password_hash)
                 )
+                conn.commit()
 
         except sqlite3.IntegrityError:
             return render_template(
@@ -414,7 +415,7 @@ def logout():
 
 
 # MAIN MENU
-@app.route('/main', methods=['GET'])
+@app.route('/main', methods=['GET', 'POST'])
 def main_menu():
 
     user_id = current_user_id()
@@ -510,6 +511,7 @@ def create_party():
                VALUES (?, ?)''',
             (party_id, user_id)
         )
+        conn.commit()
 
     return jsonify({
         "success": True,
@@ -581,7 +583,7 @@ def save_party_log(party_id):
 
     session_number = request.form.get('session_number', type=int)
     session_title = request.form.get('session_title', '').strip()
-    session_notes = request.form.get('session_notes', '').strip()
+    session_notes = request.form.get('log_text', '').strip()
 
     if session_number is None or session_number < 1:
         abort(400, description="Invalid session number.")
@@ -635,20 +637,23 @@ def save_party_log(party_id):
                  session_title, session_notes)
             )
             log_id = cursor.lastrowid
+        conn.commit()
 
-    return jsonify({
-        "success": True,
-        "log_id": log_id,
-        "party_id": party_id,
-        "session_number": session_number,
-        "status": "draft"
-    })
+    return redirect(url_for('main_menu'))
+    #return jsonify({
+    #    "success": True,
+    #    "log_id": log_id,
+    #    "party_id": party_id,
+    #    "session_number": session_number,
+    #    "status": "draft"
+    #})
 
 
 ###ORGANIZES PARTY LOG SESSIONS
 @app.route('/party/<int:party_id>/logs', methods=['GET'])
 def get_party_logs(party_id):
     user_id = current_user_id()
+    can_edit=False
 
     with connect_db() as conn:
 
@@ -725,11 +730,14 @@ def get_party_logs(party_id):
             for log in logs
         ]
 
-    return jsonify({
-        "party_id": party_id,
-        "can_edit": can_edit,
-        "logs": result
-    })
+    return render_template("log.html", log_contents='', session_title='', user_id=user_id, party_id=party_id)
+    #return jsonify({
+    #    "party_id": party_id,
+    #    "can_edit": can_edit,
+    #    "logs": result
+    #})
+
+
 ###LOG SUMMARY ROUTE
 @app.route(
     '/party/<int:party_id>/logs/<int:log_id>/summarize',
@@ -746,9 +754,9 @@ def generate_party_log_summary(party_id, log_id):
             """
             SELECT session_notes, status, session_title
             FROM party_logs
-            WHERE party_id = ? AND log_id = ?
+            WHERE party_id = ?
             """,
-            (party_id, log_id)
+            (party_id,)
         ).fetchone()
 
         if log is None:
@@ -786,21 +794,7 @@ def generate_party_log_summary(party_id, log_id):
         if cursor.rowcount == 0:
             abort(409, description="Log changed during summarization.")
 
-    return render_template("log.html", log_contents=summary, session_title=log[2]),200
-
-#campaign log log
-@app.route('/log', methods=['GET'])
-def log():
-    user_id = current_user_id()
-
-    with connect_db() as conn:
-        campaign_id = personal_party_id(conn, user_id)
-
-        #select log from user log table and save as content
-        contents = "pull from db"
-        ...
-    return render_template('log.html', box_contents=contents),200
-
+    return render_template("log.html", log_contents=summary, session_title=log[2])
 
 
 @app.route('/log/save', methods=['GET', 'POST'])
@@ -818,6 +812,7 @@ def log_save():
                 "insert into campaign_logs (author_id, campaign_id, session_notes, session_title) values (?, ?, ?, ?)",
                 (user_id, campaign_id, new_contents, session_title)
             )
+            conn.commit()
     return redirect(url_for('log', box_contents=new_contents))
 
 
@@ -914,6 +909,7 @@ def create_character():
                VALUES (?, ?, ?)''',
             (character_id, alignment, race)
         )
+        conn.commit()
 
     return redirect(
         url_for('character_sheet', character_id=character_id)
@@ -1218,6 +1214,7 @@ def save_character(character_id):
                 for resource in resources
             ]
         )
+        conn.commit()
 
     return redirect(
         url_for('character_sheet', character_id=character_id)
