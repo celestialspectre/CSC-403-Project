@@ -52,7 +52,7 @@
             width: 100%;
             height: auto;
             min-height: 0;
-            background: antiquewhite;
+            background-color: antiquewhite;
             color: #222;
             border: 2px solid #45352b;
             border-radius: 10px;
@@ -110,7 +110,7 @@
             background: white;
             border: 1px solid #777;
             border-radius: 5px;
-            font-size: 15px;
+            font-size: 18px;
         }
 
         body .party-page .party-section button {
@@ -531,7 +531,7 @@
                 {% if character['user_id'] == user_id %}
 
                     <a class="card-link"
-                       href="{{ url_for('character_sheet', character_id=character['character_id']) }}">
+                       href="{{ url_for('character_sheet', character_id=character['character_id']) }}" style="font-family: 'Young Serif';">
                         View Character Sheet
                     </a>
 
@@ -686,7 +686,7 @@
 
     <!-- BACK TO MAIN MENU -->
 
-    <a href="{{ url_for('main_menu') }}" class="back-link">
+    <a href="{{ url_for('main_menu') }}" style="font-family: 'Young Serif';" class="back-link">
         Return to Main Menu
     </a>
 
