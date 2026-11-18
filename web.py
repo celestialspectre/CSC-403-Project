@@ -2093,6 +2093,7 @@ def dice_roller():
             'SELECT roll_id, roll_name, roll_expression FROM saved_rolls '
             'WHERE user_id=? ORDER BY roll_id DESC', (user_id,)
         ).fetchall()
+        conn.commit()
 
     return render_template('dice_roller.html', result=result, graph=graph,
                            chance=chance, target=target, expression=expression,
@@ -2101,7 +2102,35 @@ def dice_roller():
                            saved_rolls=saved_rolls)
 
 
+@app.route('/dice-roller/save', methods=['POST'])
+def save_dice_roll():
+    user_id = current_user_id()
+    name = text_field(request.form, 'roll_name', 80, True)
+    expression = text_field(request.form, 'expression', 160, True)
+    try:
+        parse_expression(expression)
+    except ValueError as error:
+        abort(400, description=str(error))
+    with connect_db() as conn:
+        count = conn.execute('SELECT COUNT(*) FROM saved_rolls WHERE user_id=?',
+                             (user_id,)).fetchone()[0]
+        if count >= 100:
+            abort(400, description='Maximum 100 saved rolls per user.')
+        conn.execute('INSERT INTO saved_rolls (user_id, roll_name, roll_expression) '
+                     'VALUES (?, ?, ?)', (user_id, name, expression))
+    return redirect(url_for('dice_roller'))
 
+
+# delete only a saved roll belonging to the cur user
+@app.route('/dice-roller/delete/<int:roll_id>', methods=['POST'])
+def delete_dice_roll(roll_id):
+    user_id = current_user_id()
+    with connect_db() as conn:
+        cursor = conn.execute('DELETE FROM saved_rolls WHERE roll_id=? AND user_id=?',
+                              (roll_id, user_id))
+        if cursor.rowcount == 0:
+            abort(404, description='Saved roll not found.')
+    return redirect(url_for('dice_roller'))
 
 
 

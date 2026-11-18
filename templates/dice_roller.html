@@ -315,8 +315,8 @@
 ></script>
 
     <main class="dice-page login_border">
-        <h1>D&D Character Hub</h1>
-        <h2>Dice Roller</h2>
+        <section class="dice-result">
+        <h1>Dice Roller</h1>
 
         <!-- standard roller still exists, new mode is optional -->
         <form action="{{ url_for('dice_roller') }}" method="POST" class="dice-form">
@@ -355,6 +355,7 @@
             <label for="target">Target Number (DC / AC)</label>
             <input id="target" name="target" type="number" min="-10000" max="20000" value="{{ target }}">
             <button type="submit">Roll Dice &amp; Show Probability</button>
+        </section>
         </form>
 
         {% if result %}
@@ -384,7 +385,7 @@
         <!-- save a custom expression for the account -->
         <section class="dice-saved">
             <h2>Save a Custom Roll</h2>
-            <form action="{{ url_for('dice_roller') }}" method="POST" class="dice-form">
+            <form action="{{ url_for('save_dice_roll') }}" method="POST" class="dice-form">
                 <label for="roll_name">Roll Name</label>
                 <input id="roll_name" name="roll_name" maxlength="80" placeholder="Longsword damage" required>
                 <label for="save_expression">Expression</label>
@@ -409,8 +410,8 @@
         </section>
 
         <nav class="dice-nav">
-            <a href="{{ url_for('character_creator') }}">Character Creator</a>
-            <a href="{{ url_for('main_menu') }}">Return to Main Menu</a>
+            <a href="{{ url_for('character_creator') }}" style="font-family: 'Young Serif';">Character Creator</a>
+            <a href="{{ url_for('main_menu') }}" style="font-family: 'Young Serif';">Return to Main Menu</a>
         </nav>
     </main>
 
