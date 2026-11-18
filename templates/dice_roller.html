@@ -1,26 +1,205 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>D&D Character Hub - Dice Roller</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}" />
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/skeleton.css') }}">
+
+    <style>
+        .dice_layout {
+            width: 90%;
+            max-width: 950px;
+            margin: 25px auto;
+            padding: 25px;
+            box-sizing: border-box;
+        }
+
+        .dice_layout h2 {
+            color: #30251e;
+            text-align: center;
+        }
+
+        .dice_stage {
+            position: relative;
+            width: 100%;
+            height: 380px;
+            margin: 25px auto;
+            background: radial-gradient(
+                ellipse at center,
+                #493160 0%,
+                #21172e 65%,
+                #100d17 100%
+            );
+            border: 3px solid #9274b4;
+            border-radius: 15px;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        #dice_canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .dice_stage_label {
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            width: 100%;
+            color: #f2e5ff;
+            text-align: center;
+            font-size: 15px;
+            pointer-events: none;
+            text-shadow: 0 2px 5px #000;
+        }
+
+        .dice_form {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            max-width: 700px;
+            margin: 20px auto;
+        }
+
+        .dice_field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: left;
+        }
+
+        .dice_field label {
+            color: #30251e;
+            font-size: 16px;
+        }
+
+        .dice_field input,
+        .dice_field select {
+            width: 100%;
+            min-height: 44px;
+            padding: 10px;
+            border: 1px solid #777;
+            border-radius: 6px;
+            background: white;
+            color: #222;
+            box-sizing: border-box;
+        }
+
+        .dice_form_footer {
+            grid-column: 1 / -1;
+            text-align: center;
+        }
+
+        #roll_button {
+            padding: 12px 35px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        #roll_button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .dice_note {
+            color: #333;
+            font-size: 13px;
+        }
+
+        .dice_results {
+            max-width: 700px;
+            margin: 25px auto;
+            padding: 20px;
+            background: rgba(255, 250, 240, 0.95);
+            border: 2px solid #9274b4;
+            border-radius: 10px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .dice_results[hidden] {
+            display: none !important;
+        }
+
+        .dice_results h2,
+        .dice_results p {
+            color: #30251e;
+            text-align: center;
+            margin: 12px 0;
+        }
+
+        .dice_results .total {
+            color: #543376;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .dice_navigation {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .dice_navigation form {
+            margin: 0;
+        }
+
+        .dice_navigation button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 600px) {
+            .dice_layout {
+                width: 95%;
+                padding: 15px;
+            }
+
+            .dice_form {
+                grid-template-columns: 1fr;
+            }
+
+            .dice_stage {
+                height: 290px;
+            }
+        }
+    </style>
 </head>
 
 <body>
-    <center>
-        <div id="triangle-down" class="border-decor"></div>
+<center>
+    <div id="triangle-down" class="border-decor"></div>
 
-        <div class="login_border">
-            <h1>Welcome to the D&D Character Hub!</h1>
-            <h2>Dice Roller</h2>
+    <div class="login_border dice_layout">
 
-            <!-- Dice Roller Form -->
-            <form action="{{ url_for('dice_roller') }}" method="POST">
+        <h1>Welcome to the D&D Character Hub!</h1>
+        <h2>3D Dice Roller</h2>
 
-                <!-- Dice Type Dropdown -->
+        <div class="dice_stage" id="dice_stage">
+            <canvas id="dice_canvas"></canvas>
+
+            <div class="dice_stage_label" id="dice_status">
+                Loading dice...
+            </div>
+        </div>
+
+        <form
+            action="{{ url_for('dice_roller') }}"
+            method="POST"
+            class="dice_form"
+            id="dice_form"
+        >
+
+            <div class="dice_field">
                 <label for="dice_type">Select Dice Type</label>
-                <br />
-                <select class="field" id="dice_type" name="dice_type" required>
+
+                <select id="dice_type" name="dice_type" required>
                     <option value="d4">D4</option>
                     <option value="d6">D6</option>
                     <option value="d8">D8</option>
@@ -29,82 +208,111 @@
                     <option value="d20" selected>D20</option>
                     <option value="d100">D100</option>
                 </select>
-                <br />
+            </div>
 
-                <!-- Number of Dice -->
+            <div class="dice_field">
                 <label for="number">Number of Dice</label>
-                <br />
-                <input class="field" type="number"
-                       id="number" name="number"
-                       min="1" max="100" value="1" required />
-                <br />
 
-                <!-- Modifier -->
+                <input
+                    type="number"
+                    id="number"
+                    name="number"
+                    min="1"
+                    max="100"
+                    value="1"
+                    required
+                >
+            </div>
+
+            <div class="dice_field">
                 <label for="modifier">Modifier</label>
-                <br />
-                <input class="field" type="number"
-                       id="modifier" name="modifier"
-                       value="0" required />
-                <br />
 
-                <!-- Roll Type Dropdown -->
+                <input
+                    type="number"
+                    id="modifier"
+                    name="modifier"
+                    value="0"
+                    required
+                >
+            </div>
+
+            <div class="dice_field">
                 <label for="roll_type">Roll Type</label>
-                <br />
-                <select class="field" id="roll_type" name="roll_type" required>
+
+                <select id="roll_type" name="roll_type" required>
                     <option value="normal">Normal Roll</option>
                     <option value="advantage">Advantage (D20)</option>
                     <option value="disadvantage">Disadvantage (D20)</option>
                 </select>
-                <br />
-                <br />
+            </div>
 
-                <button type="submit">Roll Dice</button>
+            <div class="dice_form_footer">
+                <button type="button" id="roll_button">
+                    Roll Dice
+                </button>
 
-                <p>*Note: Advantage and Disadvantage require one D20.</p>
+                <p class="dice_note">
+                    Advantage and disadvantage require exactly one D20.
+                    Up to 12 dice are shown in 3D.
+                </p>
+            </div>
 
-            </form>
+        </form>
 
-            <!-- Display Dice Results -->
-            {% if result %}
-                <div class="character">
-                    <h2>Roll Results</h2>
+        <div class="dice_results" id="dice_results" hidden>
+            <h2>Roll Results</h2>
 
-                    <p>
-                        <strong>Dice:</strong>
-                        {{ result["dice_type"] }}
-                    </p>
+            <p>
+                <strong>Dice:</strong>
+                <span id="result_dice"></span>
+            </p>
 
-                    <p>
-                        <strong>Individual Rolls:</strong>
-                        {{ result["rolls"] }}
-                    </p>
+            <p>
+                <strong>Individual Rolls:</strong>
+                <span id="result_rolls"></span>
+            </p>
 
-                    <p>
-                        <strong>Modifier:</strong>
-                        {{ result["modifier"] }}
-                    </p>
+            <p>
+                <strong>Modifier:</strong>
+                <span id="result_modifier"></span>
+            </p>
 
-                    <h2>Total: {{ result["total"] }}</h2>
-                </div>
-            {% endif %}
-
-            <!-- Navigation Buttons -->
-            <form action="{{ url_for('character_creator') }}" method="GET">
-                <button type="submit">Character Creator</button>
-            </form>
-            
-            <form action="{{ url_for('main_menu') }}" method="GET">
-                <button type="submit">Return to Main Menu</button>
-            </form>
-
+            <h2 class="total">
+                Total: <span id="result_total"></span>
+            </h2>
         </div>
 
-        <marquee>
-            <img src="{{ url_for('static', filename='img/dnd.png') }}"
-                 style="width: 10%; height: auto;" />
-        </marquee>
+        <div class="dice_navigation">
+            <form action="{{ url_for('character_creator') }}" method="GET">
+                <button type="submit">
+                    Character Creator
+                </button>
+            </form>
 
-        <div id="triangle-up" class="border-decor"></div>
-    </center>
+            <form action="{{ url_for('main_menu') }}" method="GET">
+                <button type="submit">
+                    Return to Main Menu
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+    <marquee>
+        <img
+            src="{{ url_for('static', filename='img/dnd.png') }}"
+            style="width:10%;height:auto;"
+            alt="D&D decoration"
+        >
+    </marquee>
+
+    <div id="triangle-up" class="border-decor"></div>
+</center>
+
+<script
+    type="module"
+    src="{{ url_for('static', filename='js/dice_animation.js') }}?v=2"
+></script>
+
 </body>
 </html>
