@@ -1636,9 +1636,11 @@ def ensure_saved_rolls_table():
 ensure_saved_rolls_table()
 
 # dice roller supports both og version and custom expressions.
+
 @app.route('/dice-roller', methods=['GET', 'POST'])
 def dice_roller():
     user_id = current_user_id()
+
     result = None
     graph = None
     chance = None
@@ -1651,56 +1653,191 @@ def dice_roller():
     modifier = 0
 
     if request.method == 'POST':
-        mode = request.form.get('mode', 'standard')
-        if mode not in ('standard', 'custom'):
-            abort(400, description='Invalid dice mode.')
-        roll_type = request.form.get('roll_type', 'normal').lower()
-        if roll_type not in ('normal', 'advantage', 'disadvantage'):
-            abort(400, description='Invalid roll type.')
-        target = integer_field(request.form, 'target', -10000, 20000, 15)
 
-        if mode == 'custom':
-            expression = request.form.get('expression', '').strip()
-            if roll_type != 'normal':
-                abort(400, description='Custom expressions currently use normal rolls only.')
-            try:
-                dice, modifier = parse_expression(expression)
-            except ValueError as error:
-                abort(400, description=str(error))
-        else:
-            dice_type = request.form.get('dice_type', 'd20').lower()
-            options = {'d4': 4, 'd6': 6, 'd8': 8, 'd10': 10, 'd12': 12, 'd20': 20, 'd100': 100}
-            if dice_type not in options:
-                abort(400, description='Invalid dice selection.')
-            number = integer_field(request.form, 'number', 1, 30, 1)
-            modifier = integer_field(request.form, 'modifier', -10000, 10000, 0)
-            dice = [(number, options[dice_type])]
-            if number * (options[dice_type] - 1) > 1500:
-                abort(400, description='Too many possible totals to graph.')
-            expression = f'{number}{dice_type} {modifier:+d}'
+        # Detect requests from the 3D dice animation
+        is_animation = (
+            request.accept_mimetypes.best_match(
+                ['application/json', 'text/html']
+            ) == 'application/json'
+        )
+
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            data = request.form
 
         try:
-            probabilities = exact_distribution(dice, modifier, roll_type)
-            groups, total = roll_dice(dice, modifier, roll_type)
-            graph = render_probability_chart(probabilities, target)
-        except ValueError as error:
+            mode = data.get('mode', 'standard')
+
+            if mode not in ('standard', 'custom'):
+                raise ValueError('Invalid dice mode.')
+
+            roll_type = str(
+                data.get('roll_type', 'normal')
+            ).lower()
+
+            if roll_type not in (
+                'normal', 'advantage', 'disadvantage'
+            ):
+                raise ValueError('Invalid roll type.')
+
+            target = int(data.get('target', 15))
+
+            if not -10000 <= target <= 20000:
+                raise ValueError('Invalid target value.')
+
+            if mode == 'custom':
+                expression = str(
+                    data.get('expression', '')
+                ).strip()
+
+                if roll_type != 'normal':
+                    raise ValueError(
+                        'Custom expressions currently use normal rolls only.'
+                    )
+
+                dice, modifier = parse_expression(expression)
+
+            else:
+                dice_type = str(
+                    data.get('dice_type', 'd20')
+                ).lower()
+
+                options = {
+                    'd4': 4,
+                    'd6': 6,
+                    'd8': 8,
+                    'd10': 10,
+                    'd12': 12,
+                    'd20': 20,
+                    'd100': 100
+                }
+
+                if dice_type not in options:
+                    raise ValueError('Invalid dice selection.')
+
+                number = int(data.get('number', 1))
+                modifier = int(data.get('modifier', 0))
+
+                if not 1 <= number <= 30:
+                    raise ValueError(
+                        'Number of dice must be between 1 and 30.'
+                    )
+
+                if not -10000 <= modifier <= 10000:
+                    raise ValueError(
+                        'Modifier must be between -10000 and 10000.'
+                    )
+
+                dice = [(number, options[dice_type])]
+
+                if roll_type != 'normal' and (
+                    dice_type != 'd20' or number != 1
+                ):
+                    raise ValueError(
+                        'Advantage/disadvantage requires exactly one D20.'
+                    )
+
+                expression = f'{number}{dice_type} {modifier:+d}'
+
+            # Calculate the dice roll using dice_features.py
+            groups, total = roll_dice(
+                dice,
+                modifier,
+                roll_type
+            )
+
+            # Return JSON directly to the 3D animation
+            if is_animation:
+
+                rolls = [
+                    value
+                    for group in groups
+                    for value in group['values']
+                ]
+
+                return jsonify({
+                    'dice_type': dice_type.upper(),
+                    'rolls': rolls,
+                    'groups': groups,
+                    'modifier': modifier,
+                    'total': total,
+                    'roll_type': roll_type
+                })
+
+            # Preserve probability features for normal requests
+            if sum(n * (s - 1) for n, s in dice) > 1500:
+                raise ValueError(
+                    'Too many possible totals to graph.'
+                )
+
+            probabilities = exact_distribution(
+                dice,
+                modifier,
+                roll_type
+            )
+
+            graph = render_probability_chart(
+                probabilities,
+                target
+            )
+
+            chance = probability_at_least(
+                probabilities,
+                target
+            )
+
+            result = {
+                'dice_type': expression,
+                'groups': groups,
+                'modifier': modifier,
+                'total': total,
+                'roll_type': roll_type
+            }
+
+        except (ValueError, TypeError) as error:
+            if is_animation:
+                return jsonify({
+                    'error': str(error)
+                }), 400
+
             abort(400, description=str(error))
 
-        chance = probability_at_least(probabilities, target)
-        result = {'dice_type': expression, 'groups': groups, 'modifier': modifier, 'total': total, 'roll_type': roll_type}
+        except Exception:
+            app.logger.exception('Dice roller failed')
 
+            if is_animation:
+                return jsonify({
+                    'error': 'An internal dice roller error occurred.'
+                }), 500
+
+            raise
+
+    # Preserve existing saved-roll functionality
     with connect_db() as conn:
         conn.row_factory = sqlite3.Row
+
         saved_rolls = conn.execute(
-            'SELECT roll_id, roll_name, roll_expression FROM saved_rolls '
-            'WHERE user_id=? ORDER BY roll_id DESC', (user_id,)
+            'SELECT roll_id, roll_name, roll_expression '
+            'FROM saved_rolls '
+            'WHERE user_id=? ORDER BY roll_id DESC',
+            (user_id,)
         ).fetchall()
 
-    return render_template('dice_roller.html', result=result, graph=graph,
-                           chance=chance, target=target, expression=expression,
-                           mode=mode, roll_type=roll_type, dice_type=dice_type,
-                           number=number, modifier=modifier,
-                           saved_rolls=saved_rolls)
+    return render_template(
+        'dice_roller.html',
+        result=result,
+        graph=graph,
+        chance=chance,
+        target=target,
+        expression=expression,
+        mode=mode,
+        roll_type=roll_type,
+        dice_type=dice_type,
+        number=number,
+        modifier=modifier,
+        saved_rolls=saved_rolls
+    )
+
 
 
 
